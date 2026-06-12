@@ -241,7 +241,7 @@ const RegisterForm = () => {
         );
         const { success, message } = res.data;
         if (success) {
-          navigate('/login');
+          navigate('/console');
           showSuccess('注册成功！');
         } else {
           showError(message);
@@ -540,10 +540,10 @@ const RegisterForm = () => {
                 <Text>
                   {t('已有账户？')}{' '}
                   <Link
-                    to='/login'
+                    to='/console'
                     className='text-blue-600 hover:text-blue-800 font-medium'
                   >
-                    {t('登录')}
+                    {t('控制台')}
                   </Link>
                 </Text>
               </div>
@@ -716,10 +716,10 @@ const RegisterForm = () => {
                 <Text>
                   {t('已有账户？')}{' '}
                   <Link
-                    to='/login'
+                    to='/console'
                     className='text-blue-600 hover:text-blue-800 font-medium'
                   >
-                    {t('登录')}
+                    {t('控制台')}
                   </Link>
                 </Text>
               </div>

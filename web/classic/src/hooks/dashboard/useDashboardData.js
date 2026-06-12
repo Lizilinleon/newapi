@@ -239,6 +239,7 @@ export const useDashboardData = (userState, userDispatch, statusState) => {
     const { success, message, data } = res.data;
     if (success) {
       userDispatch({ type: 'login', payload: data });
+      localStorage.setItem('user', JSON.stringify(data));
     } else {
       showError(message);
     }

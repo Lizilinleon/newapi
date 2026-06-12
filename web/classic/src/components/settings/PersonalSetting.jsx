@@ -391,7 +391,7 @@ const PersonalSetting = () => {
       await API.get('/api/user/logout');
       userDispatch({ type: 'logout' });
       localStorage.removeItem('user');
-      navigate('/login');
+      navigate('/console');
     } else {
       showError(message);
     }

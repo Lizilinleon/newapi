@@ -101,14 +101,14 @@ export function useAuthRedirect() {
    * Redirect to login page
    */
   const redirectToLogin = () => {
-    navigate({ to: '/sign-in', replace: true })
+    navigate({ to: '/dashboard', replace: true })
   }
 
   /**
    * Redirect to register page
    */
   const redirectToRegister = () => {
-    navigate({ to: '/sign-up', replace: true })
+    navigate({ to: '/dashboard', replace: true })
   }
 
   return {

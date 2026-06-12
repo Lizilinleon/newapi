@@ -18,19 +18,15 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { lazy, Suspense, useContext, useMemo } from 'react';
-import { Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import Loading from './components/common/ui/Loading';
 import User from './pages/User';
 import { AuthRedirect, PrivateRoute, AdminRoute } from './helpers';
-import RegisterForm from './components/auth/RegisterForm';
-import LoginForm from './components/auth/LoginForm';
 import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import Setting from './pages/Setting';
 import { StatusContext } from './context/Status';
 
-import PasswordResetForm from './components/auth/PasswordResetForm';
-import PasswordResetConfirm from './components/auth/PasswordResetConfirm';
 import Channel from './pages/Channel';
 import Token from './pages/Token';
 import Redemption from './pages/Redemption';
@@ -47,7 +43,6 @@ import Playground from './pages/Playground';
 import Subscription from './pages/Subscription';
 import OAuth2Callback from './components/auth/OAuth2Callback';
 import PersonalSetting from './components/settings/PersonalSetting';
-import Setup from './pages/Setup';
 import SetupCheck from './components/layout/SetupCheck';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -102,7 +97,7 @@ function App() {
           path='/setup'
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-              <Setup />
+              <Navigate to='/console' replace />
             </Suspense>
           }
         />
@@ -175,7 +170,7 @@ function App() {
           path='/user/reset'
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-              <PasswordResetConfirm />
+              <Navigate to='/console' replace />
             </Suspense>
           }
         />
@@ -183,9 +178,7 @@ function App() {
           path='/login'
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-              <AuthRedirect>
-                <LoginForm />
-              </AuthRedirect>
+              <Navigate to='/console' replace />
             </Suspense>
           }
         />
@@ -193,9 +186,7 @@ function App() {
           path='/register'
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-              <AuthRedirect>
-                <RegisterForm />
-              </AuthRedirect>
+              <Navigate to='/console' replace />
             </Suspense>
           }
         />
@@ -203,7 +194,7 @@ function App() {
           path='/reset'
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-              <PasswordResetForm />
+              <Navigate to='/console' replace />
             </Suspense>
           }
         />

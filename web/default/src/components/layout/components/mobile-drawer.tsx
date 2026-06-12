@@ -145,23 +145,20 @@ function MobileUserProfile({ user, onNavigate }: MobileUserProfileProps) {
   )
 }
 
-/**
- * Mobile sign in button for unauthenticated users
- */
-interface MobileSignInButtonProps {
+interface MobileConsoleButtonProps {
   onNavigate?: () => void
 }
 
-function MobileSignInButton({ onNavigate }: MobileSignInButtonProps) {
+function MobileConsoleButton({ onNavigate }: MobileConsoleButtonProps) {
   const { t } = useTranslation()
   return (
     <Button
       variant='secondary'
       size='sm'
       className='h-10 w-full'
-      render={<Link to='/sign-in' onClick={onNavigate} />}
+      render={<Link to='/dashboard' onClick={onNavigate} />}
     >
-      {t('Sign in')}
+      {t('Go to Dashboard')}
     </Button>
   )
 }
@@ -283,7 +280,7 @@ export function MobileDrawer({
                 (user ? (
                   <MobileUserProfile user={user} onNavigate={onClose} />
                 ) : (
-                  <MobileSignInButton onNavigate={onClose} />
+                  <MobileConsoleButton onNavigate={onClose} />
                 ))}
             </div>
           </motion.div>

@@ -25,6 +25,18 @@ type SetupRequest struct {
 }
 
 func GetSetup(c *gin.Context) {
+	if getDevRootUser() != nil {
+		c.JSON(200, gin.H{
+			"success": true,
+			"data": Setup{
+				Status:       true,
+				RootInit:     true,
+				DatabaseType: detectSetupDatabaseType(),
+			},
+		})
+		return
+	}
+
 	setup := Setup{
 		Status: constant.Setup,
 	}
@@ -52,6 +64,14 @@ func GetSetup(c *gin.Context) {
 }
 
 func PostSetup(c *gin.Context) {
+	if getDevRootUser() != nil {
+		c.JSON(200, gin.H{
+			"success": true,
+			"message": "",
+		})
+		return
+	}
+
 	// Check if setup is already completed
 	if constant.Setup {
 		c.JSON(200, gin.H{
@@ -179,4 +199,17 @@ func boolToString(b bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+func detectSetupDatabaseType() string {
+	if common.UsingMySQL {
+		return "mysql"
+	}
+	if common.UsingPostgreSQL {
+		return "postgres"
+	}
+	if common.UsingSQLite {
+		return "sqlite"
+	}
+	return ""
 }

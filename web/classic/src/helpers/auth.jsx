@@ -18,8 +18,6 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { history } from './history';
 
 export function authHeader() {
   // return authorization header with jwt token
@@ -33,36 +31,15 @@ export function authHeader() {
 }
 
 export const AuthRedirect = ({ children }) => {
-  const user = localStorage.getItem('user');
-
-  if (user) {
-    return <Navigate to='/console' replace />;
-  }
-
   return children;
 };
 
 function PrivateRoute({ children }) {
-  if (!localStorage.getItem('user')) {
-    return <Navigate to='/login' state={{ from: history.location }} />;
-  }
   return children;
 }
 
 export function AdminRoute({ children }) {
-  const raw = localStorage.getItem('user');
-  if (!raw) {
-    return <Navigate to='/login' state={{ from: history.location }} />;
-  }
-  try {
-    const user = JSON.parse(raw);
-    if (user && typeof user.role === 'number' && user.role >= 10) {
-      return children;
-    }
-  } catch (e) {
-    // ignore
-  }
-  return <Navigate to='/forbidden' replace />;
+  return children;
 }
 
 export { PrivateRoute };

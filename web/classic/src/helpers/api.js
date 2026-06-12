@@ -26,14 +26,22 @@ import {
 import axios from 'axios';
 import { MESSAGE_ROLES } from '../constants/playground.constants';
 
+function getDefaultHeaders() {
+  const userId = getUserIdFromLocalStorage();
+  const headers = {
+    'Cache-Control': 'no-store',
+  };
+  if (userId !== undefined && userId !== null) {
+    headers['New-API-User'] = userId;
+  }
+  return headers;
+}
+
 export let API = axios.create({
   baseURL: import.meta.env.VITE_REACT_APP_SERVER_URL
     ? import.meta.env.VITE_REACT_APP_SERVER_URL
     : '',
-  headers: {
-    'New-API-User': getUserIdFromLocalStorage(),
-    'Cache-Control': 'no-store',
-  },
+  headers: getDefaultHeaders(),
 });
 
 
@@ -85,10 +93,7 @@ export function updateAPI() {
     baseURL: import.meta.env.VITE_REACT_APP_SERVER_URL
       ? import.meta.env.VITE_REACT_APP_SERVER_URL
       : '',
-    headers: {
-      'New-API-User': getUserIdFromLocalStorage(),
-      'Cache-Control': 'no-store',
-    },
+    headers: getDefaultHeaders(),
   });
 
   patchAPIInstance(API);

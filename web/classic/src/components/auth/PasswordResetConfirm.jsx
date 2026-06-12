@@ -201,10 +201,10 @@ const PasswordResetConfirm = () => {
                 <div className='mt-6 text-center text-sm'>
                   <Text>
                     <Link
-                      to='/login'
+                      to='/console'
                       className='text-blue-600 hover:text-blue-800 font-medium'
                     >
-                      {t('返回登录')}
+                      {t('控制台')}
                     </Link>
                   </Text>
                 </div>

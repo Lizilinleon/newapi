@@ -60,7 +60,7 @@ export function getLogo() {
 
 export function getUserIdFromLocalStorage() {
   let user = localStorage.getItem('user');
-  if (!user) return -1;
+  if (!user) return undefined;
   user = JSON.parse(user);
   return user.id;
 }
@@ -125,10 +125,7 @@ export function showError(error) {
     if (error.name === 'AxiosError') {
       switch (error.response?.status) {
         case 401:
-          // 清除用户状态
-          localStorage.removeItem('user');
-          // toast.error('错误：未登录或登录已过期，请重新登录！', showErrorOptions);
-          window.location.href = '/login?expired=true';
+          Toast.warning('Session is being refreshed, please retry.');
           break;
         case 429:
           Toast.error('错误：请求次数过多，请稍后再试！');

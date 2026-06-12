@@ -79,7 +79,7 @@ function OAuthCallback() {
 
       if (!search?.code) {
         toast.error(i18next.t('Missing code'))
-        safeNavigate('/sign-in')
+        safeNavigate('/dashboard')
         return
       }
       const isBindingFlow =
@@ -159,7 +159,7 @@ function OAuthCallback() {
           return
         }
         toast.error(message)
-        safeNavigate('/sign-in')
+        safeNavigate('/dashboard')
       }
 
       try {
@@ -201,7 +201,7 @@ function OAuthCallback() {
             return
           }
           toast.error(res?.data?.message || i18next.t('OAuth failed'))
-          safeNavigate('/sign-in')
+          safeNavigate('/dashboard')
           return
         }
         const message = res?.data?.message || 'OAuth failed'

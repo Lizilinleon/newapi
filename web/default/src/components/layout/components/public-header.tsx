@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
@@ -26,7 +26,6 @@ import { useSystemConfig } from '@/hooks/use-system-config'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Dialog } from '@/components/dialog'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -34,13 +33,6 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { defaultTopNavLinks } from '../config/top-nav.config'
 import type { TopNavLink } from '../types'
 import { HeaderLogo } from './header-logo'
-
-const AUTH_PROMPT_SECONDS = 5
-
-type AuthPromptTarget = {
-  title: string
-  href: string
-}
 
 export interface PublicHeaderProps {
   navLinks?: TopNavLink[]
@@ -75,10 +67,6 @@ export function PublicHeader(props: PublicHeaderProps) {
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [authPromptTarget, setAuthPromptTarget] =
-    useState<AuthPromptTarget | null>(null)
-  const [authPromptSecondsLeft, setAuthPromptSecondsLeft] =
-    useState(AUTH_PROMPT_SECONDS)
   const { auth } = useAuthStore()
   const {
     systemName,
@@ -110,66 +98,29 @@ export function PublicHeader(props: PublicHeaderProps) {
     }
   }, [mobileOpen])
 
-  useEffect(() => {
-    if (!authPromptTarget) return
-
-    const intervalId = window.setInterval(() => {
-      setAuthPromptSecondsLeft((seconds) => Math.max(seconds - 1, 0))
-    }, 1000)
-
-    const timeoutId = window.setTimeout(() => {
-      const redirect = authPromptTarget.href
-      setAuthPromptTarget(null)
-      navigate({ to: '/sign-in', search: { redirect } })
-    }, AUTH_PROMPT_SECONDS * 1000)
-
-    return () => {
-      window.clearInterval(intervalId)
-      window.clearTimeout(timeoutId)
+  const handleNavLinkClick = (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    link: TopNavLink,
+    closeMobile = false
+  ) => {
+    if (link.disabled) {
+      event.preventDefault()
+      return
     }
-  }, [authPromptTarget, navigate])
 
-  const closeAuthPrompt = useCallback(() => {
-    setAuthPromptTarget(null)
-    setAuthPromptSecondsLeft(AUTH_PROMPT_SECONDS)
-  }, [])
-
-  const navigateToSignIn = useCallback(() => {
-    const redirect = authPromptTarget?.href || '/'
-    setAuthPromptTarget(null)
-    navigate({ to: '/sign-in', search: { redirect } })
-  }, [authPromptTarget?.href, navigate])
-
-  const handleNavLinkClick = useCallback(
-    (
-      event: React.MouseEvent<HTMLAnchorElement>,
-      link: TopNavLink,
-      closeMobile = false
-    ) => {
-      if (link.disabled) {
-        event.preventDefault()
-        return
-      }
-
-      if (link.requiresAuth) {
-        event.preventDefault()
-        if (closeMobile) {
-          setMobileOpen(false)
-        }
-        setAuthPromptSecondsLeft(AUTH_PROMPT_SECONDS)
-        setAuthPromptTarget({
-          title: t(link.title),
-          href: link.href,
-        })
-        return
-      }
-
+    if (link.requiresAuth) {
+      event.preventDefault()
       if (closeMobile) {
         setMobileOpen(false)
       }
-    },
-    [t]
-  )
+      navigate({ to: link.href })
+      return
+    }
+
+    if (closeMobile) {
+      setMobileOpen(false)
+    }
+  }
 
   return (
     <>
@@ -286,9 +237,9 @@ export function PublicHeader(props: PublicHeaderProps) {
                     <Button
                       size='sm'
                       className='h-8 rounded-lg px-3.5 text-xs font-medium'
-                      render={<Link to='/sign-in' />}
+                      render={<Link to='/dashboard' />}
                     >
-                      {t('Sign in')}
+                      {t('Go to Dashboard')}
                     </Button>
                   )}
                 </>
@@ -402,45 +353,16 @@ export function PublicHeader(props: PublicHeaderProps) {
           >
             {showAuthButtons && (
               <Link
-                to={isAuthenticated ? '/dashboard' : '/sign-in'}
+                to='/dashboard'
                 onClick={() => setMobileOpen(false)}
                 className='bg-foreground text-background inline-flex h-10 items-center justify-center rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:opacity-80'
               >
-                {isAuthenticated ? t('Go to Dashboard') : t('Sign in')}
+                {t('Go to Dashboard')}
               </Link>
             )}
           </div>
         </div>
       </div>
-
-      <Dialog
-        open={!!authPromptTarget}
-        onOpenChange={(open) => {
-          if (!open) {
-            closeAuthPrompt()
-          }
-        }}
-        title={t('Sign in required')}
-        description={t('Please sign in to view {{module}}.', {
-          module: authPromptTarget?.title || '',
-        })}
-        contentClassName='sm:max-w-md'
-        contentHeight='auto'
-        footer={
-          <>
-            <Button variant='outline' onClick={closeAuthPrompt}>
-              {t('Cancel')}
-            </Button>
-            <Button onClick={navigateToSignIn}>{t('Sign in now')}</Button>
-          </>
-        }
-      >
-        <div className='bg-muted/40 text-muted-foreground rounded-lg px-3 py-2 text-sm'>
-          {t('Redirecting to sign in in {{seconds}} seconds.', {
-            seconds: authPromptSecondsLeft,
-          })}
-        </div>
-      </Dialog>
     </>
   )
 }

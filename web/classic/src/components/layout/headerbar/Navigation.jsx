@@ -55,10 +55,10 @@ const Navigation = ({
 
       let targetPath = link.to;
       if (link.itemKey === 'console' && !userState.user) {
-        targetPath = '/login';
+        targetPath = '/console';
       }
       if (link.itemKey === 'pricing' && pricingRequireAuth && !userState.user) {
-        targetPath = '/login';
+        targetPath = '/console';
       }
 
       return (

@@ -142,9 +142,7 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
   const logout = useCallback(async () => {
     await API.get('/api/user/logout');
     showSuccess(t('注销成功!'));
-    userDispatch({ type: 'logout' });
-    localStorage.removeItem('user');
-    navigate('/login');
+    navigate('/console');
   }, [navigate, t, userDispatch]);
 
   const handleLanguageChange = useCallback(

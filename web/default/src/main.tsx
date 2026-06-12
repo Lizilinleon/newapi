@@ -84,8 +84,7 @@ const queryClient = new QueryClient({
         if (error.response?.status === 401) {
           toast.error(i18next.t('Session expired!'))
           useAuthStore.getState().auth.reset()
-          const redirect = `${router.history.location.href}`
-          router.navigate({ to: '/sign-in', search: { redirect } })
+          router.navigate({ to: '/dashboard' })
         }
         if (error.response?.status === 500) {
           toast.error(i18next.t('Internal Server Error!'))

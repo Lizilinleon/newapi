@@ -16,19 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute, useSearch } from '@tanstack/react-router'
-import {
-  ResetPasswordConfirm,
-  type ResetPasswordSearchParams,
-} from '@/features/auth/reset-password-confirm'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/(auth)/reset')({
-  component: ResetPassword,
+  beforeLoad: () => {
+    throw redirect({ to: '/dashboard' })
+  },
 })
-
-function ResetPassword() {
-  const search = useSearch({
-    from: '/(auth)/reset',
-  }) as ResetPasswordSearchParams
-  return <ResetPasswordConfirm email={search?.email} token={search?.token} />
-}

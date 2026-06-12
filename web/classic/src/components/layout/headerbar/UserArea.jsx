@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright (C) 2025 QuantumNous
 
 This program is free software: you can redistribute it and/or modify
@@ -142,7 +142,7 @@ const UserArea = ({
       </div>
     );
   } else {
-    const showRegisterButton = !isSelfUseMode;
+    const showRegisterButton = false;
 
     const commonSizingAndLayoutClass =
       'flex items-center justify-center !py-[10px] !px-1.5';
@@ -170,13 +170,13 @@ const UserArea = ({
 
     return (
       <div className='flex items-center'>
-        <Link to='/login' className='flex'>
+        <Link to='/console' className='flex'>
           <Button
             theme='borderless'
             type='tertiary'
             className={loginButtonClasses}
           >
-            <span className={loginButtonTextSpanClass}>{t('登录')}</span>
+            <span className={loginButtonTextSpanClass}>{t('控制台')}</span>
           </Button>
         </Link>
         {showRegisterButton && (

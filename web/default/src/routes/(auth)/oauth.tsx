@@ -50,7 +50,7 @@ function OAuthComponent() {
         /* empty */
       }
       toast.error(i18next.t('OAuth failed'))
-      navigate({ to: '/sign-in', replace: true })
+      navigate({ to: '/dashboard', replace: true })
     })()
   }, [navigate, search])
 

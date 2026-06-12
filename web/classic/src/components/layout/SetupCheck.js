@@ -17,23 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { StatusContext } from '../../context/Status';
+import React from 'react';
 
 const SetupCheck = ({ children }) => {
-  const [statusState] = useContext(StatusContext);
-  const location = useLocation();
-
-  useEffect(() => {
-    if (
-      statusState?.status?.setup === false &&
-      location.pathname !== '/setup'
-    ) {
-      window.location.href = '/setup';
-    }
-  }, [statusState?.status?.setup, location.pathname]);
-
   return children;
 };
 

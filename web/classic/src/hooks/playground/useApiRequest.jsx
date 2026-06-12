@@ -41,6 +41,17 @@ export const useApiRequest = (
 ) => {
   const { t } = useTranslation();
 
+  const buildRequestHeaders = useCallback(() => {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    const userId = getUserIdFromLocalStorage();
+    if (userId !== undefined && userId !== null) {
+      headers['New-Api-User'] = userId;
+    }
+    return headers;
+  }, []);
+
   // 处理消息自动关闭逻辑的公共函数
   const applyAutoCollapseLogic = useCallback(
     (message, isThinkingComplete = true) => {
@@ -187,10 +198,7 @@ export const useApiRequest = (
       try {
         const response = await fetch(API_ENDPOINTS.CHAT_COMPLETIONS, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'New-Api-User': getUserIdFromLocalStorage(),
-          },
+          headers: buildRequestHeaders(),
           body: JSON.stringify(payload),
         });
 
@@ -297,7 +305,14 @@ export const useApiRequest = (
         });
       }
     },
-    [setDebugData, setActiveDebugTab, setMessage, t, applyAutoCollapseLogic],
+    [
+      setDebugData,
+      setActiveDebugTab,
+      setMessage,
+      t,
+      applyAutoCollapseLogic,
+      buildRequestHeaders,
+    ],
   );
 
   // SSE请求
@@ -314,10 +329,7 @@ export const useApiRequest = (
       setActiveDebugTab(DEBUG_TABS.REQUEST);
 
       const source = new SSE(API_ENDPOINTS.CHAT_COMPLETIONS, {
-        headers: {
-          'Content-Type': 'application/json',
-          'New-Api-User': getUserIdFromLocalStorage(),
-        },
+        headers: buildRequestHeaders(),
         method: 'POST',
         payload: JSON.stringify(payload),
       });
@@ -487,6 +499,7 @@ export const useApiRequest = (
       completeMessage,
       t,
       applyAutoCollapseLogic,
+      buildRequestHeaders,
     ],
   );
 

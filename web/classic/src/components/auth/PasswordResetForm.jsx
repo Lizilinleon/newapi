@@ -163,10 +163,10 @@ const PasswordResetForm = () => {
                   <Text>
                     {t('想起来了？')}{' '}
                     <Link
-                      to='/login'
+                      to='/console'
                       className='text-blue-600 hover:text-blue-800 font-medium'
                     >
-                      {t('登录')}
+                      {t('控制台')}
                     </Link>
                   </Text>
                 </div>
