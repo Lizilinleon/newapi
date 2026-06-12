@@ -52,6 +52,15 @@ const (
 	ContextKeyUsingGroup  ContextKey = "group"
 	ContextKeyUserName    ContextKey = "username"
 
+	/* enterprise billing related keys */
+	ContextKeyEnterpriseId     ContextKey = "enterprise_id"
+	ContextKeyEnterpriseRole   ContextKey = "enterprise_role"
+	ContextKeyEnterpriseStatus ContextKey = "enterprise_status"
+	ContextKeyBillingUserId    ContextKey = "billing_user_id"
+	ContextKeyBillingUserEmail ContextKey = "billing_user_email"
+	ContextKeyBillingUserName  ContextKey = "billing_username"
+	ContextKeyBillingUserQuota ContextKey = "billing_user_quota"
+
 	ContextKeyLocalCountTokens ContextKey = "local_count_tokens"
 
 	ContextKeySystemPromptOverride ContextKey = "system_prompt_override"

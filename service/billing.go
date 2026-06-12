@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/model"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/types"
 	"github.com/gin-gonic/gin"
@@ -13,6 +14,26 @@ const (
 	BillingSourceWallet       = "wallet"
 	BillingSourceSubscription = "subscription"
 )
+
+func billingUserId(relayInfo *relaycommon.RelayInfo) int {
+	if relayInfo == nil {
+		return 0
+	}
+	if relayInfo.BillingUserId != 0 {
+		return relayInfo.BillingUserId
+	}
+	return relayInfo.UserId
+}
+
+func billingUserEmail(relayInfo *relaycommon.RelayInfo) string {
+	if relayInfo == nil {
+		return ""
+	}
+	if relayInfo.BillingUserEmail != "" {
+		return relayInfo.BillingUserEmail
+	}
+	return relayInfo.UserEmail
+}
 
 // PreConsumeBilling 根据用户计费偏好创建 BillingSession 并执行预扣费。
 // 会话存储在 relayInfo.Billing 上，供后续 Settle / Refund 使用。
@@ -57,6 +78,9 @@ func SettleBilling(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, actualQuo
 		if err := relayInfo.Billing.Settle(actualQuota); err != nil {
 			return err
 		}
+		if actualQuota > 0 && billingUserId(relayInfo) != relayInfo.UserId {
+			model.UpdateUserUsedQuotaAndRequestCount(billingUserId(relayInfo), actualQuota)
+		}
 
 		// 发送额度通知（订阅计费使用订阅剩余额度）
 		if actualQuota != 0 {
@@ -72,7 +96,16 @@ func SettleBilling(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, actualQuo
 	// 回退：无 BillingSession 时使用旧路径
 	quotaDelta := actualQuota - relayInfo.FinalPreConsumedQuota
 	if quotaDelta != 0 {
-		return PostConsumeQuota(relayInfo, quotaDelta, relayInfo.FinalPreConsumedQuota, true)
+		if err := PostConsumeQuota(relayInfo, quotaDelta, relayInfo.FinalPreConsumedQuota, true); err != nil {
+			return err
+		}
+		if actualQuota > 0 && billingUserId(relayInfo) != relayInfo.UserId {
+			model.UpdateUserUsedQuotaAndRequestCount(billingUserId(relayInfo), actualQuota)
+		}
+		return nil
+	}
+	if actualQuota > 0 && billingUserId(relayInfo) != relayInfo.UserId {
+		model.UpdateUserUsedQuotaAndRequestCount(billingUserId(relayInfo), actualQuota)
 	}
 	return nil
 }

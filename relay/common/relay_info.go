@@ -118,6 +118,11 @@ type RelayInfo struct {
 	UserSetting            dto.UserSetting
 	UserEmail              string
 	UserQuota              int
+	BillingUserId          int
+	BillingUserEmail       string
+	BillingUserName        string
+	BillingUserQuota       int
+	EnterpriseId           int
 	RelayFormat            types.RelayFormat
 	SendResponseCount      int
 	ReceivedResponseCount  int
@@ -264,6 +269,10 @@ func (info *RelayInfo) ToString() string {
 	// User & token info (mask secrets)
 	fmt.Fprintf(b, "User{ Id: %d, Email: %q, Group: %q, UsingGroup: %q, Quota: %d }, ",
 		info.UserId, common.MaskEmail(info.UserEmail), info.UserGroup, info.UsingGroup, info.UserQuota)
+	if info.BillingUserId != 0 && info.BillingUserId != info.UserId {
+		fmt.Fprintf(b, "Billing{ UserId: %d, Email: %q, EnterpriseId: %d, Quota: %d }, ",
+			info.BillingUserId, common.MaskEmail(info.BillingUserEmail), info.EnterpriseId, info.BillingUserQuota)
+	}
 	fmt.Fprintf(b, "Token{ Id: %d, Unlimited: %t, Key: ***masked*** }, ", info.TokenId, info.TokenUnlimited)
 
 	// Time info
@@ -463,12 +472,13 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 	info := &RelayInfo{
 		Request: request,
 
-		RequestId:  reqId,
-		UserId:     common.GetContextKeyInt(c, constant.ContextKeyUserId),
-		UsingGroup: common.GetContextKeyString(c, constant.ContextKeyUsingGroup),
-		UserGroup:  common.GetContextKeyString(c, constant.ContextKeyUserGroup),
-		UserQuota:  common.GetContextKeyInt(c, constant.ContextKeyUserQuota),
-		UserEmail:  common.GetContextKeyString(c, constant.ContextKeyUserEmail),
+		RequestId:    reqId,
+		UserId:       common.GetContextKeyInt(c, constant.ContextKeyUserId),
+		UsingGroup:   common.GetContextKeyString(c, constant.ContextKeyUsingGroup),
+		UserGroup:    common.GetContextKeyString(c, constant.ContextKeyUserGroup),
+		UserQuota:    common.GetContextKeyInt(c, constant.ContextKeyUserQuota),
+		UserEmail:    common.GetContextKeyString(c, constant.ContextKeyUserEmail),
+		EnterpriseId: common.GetContextKeyInt(c, constant.ContextKeyEnterpriseId),
 
 		OriginModelName: common.GetContextKeyString(c, constant.ContextKeyOriginalModel),
 
@@ -494,6 +504,21 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 			estimatePromptTokens: common.GetContextKeyInt(c, constant.ContextKeyEstimatedTokens),
 		},
 	}
+
+	info.BillingUserId = common.GetContextKeyInt(c, constant.ContextKeyBillingUserId)
+	if info.BillingUserId == 0 {
+		info.BillingUserId = info.UserId
+	}
+	info.BillingUserEmail = common.GetContextKeyString(c, constant.ContextKeyBillingUserEmail)
+	if info.BillingUserEmail == "" {
+		info.BillingUserEmail = info.UserEmail
+	}
+	info.BillingUserName = common.GetContextKeyString(c, constant.ContextKeyBillingUserName)
+	billingUserQuota := common.GetContextKeyInt(c, constant.ContextKeyBillingUserQuota)
+	if info.BillingUserId == info.UserId && billingUserQuota == 0 {
+		billingUserQuota = info.UserQuota
+	}
+	info.BillingUserQuota = billingUserQuota
 
 	if info.RelayMode == relayconstant.RelayModeUnknown {
 		info.RelayMode = c.GetInt("relay_mode")

@@ -289,6 +289,19 @@ func SetApiRouter(router *gin.Engine) {
 			}
 		}
 
+		enterpriseRoute := apiRouter.Group("/enterprise")
+		enterpriseRoute.Use(middleware.UserAuth())
+		{
+			enterpriseRoute.GET("/summary", controller.GetEnterpriseSummary)
+			enterpriseRoute.POST("/members", controller.CreateEnterpriseMember)
+			enterpriseRoute.PATCH("/members/:id", controller.UpdateEnterpriseMember)
+			enterpriseRoute.DELETE("/members/:id", controller.DeleteEnterpriseMember)
+			enterpriseRoute.GET("/members/:id/tokens", controller.GetEnterpriseMemberTokens)
+			enterpriseRoute.POST("/dev/members/:id/login", controller.DevLoginEnterpriseMember)
+			enterpriseRoute.POST("/dev/owner/login", controller.DevReturnEnterpriseOwner)
+			enterpriseRoute.GET("/logs", controller.GetEnterpriseLogs)
+		}
+
 		redemptionRoute := apiRouter.Group("/redemption")
 		redemptionRoute.Use(middleware.AdminAuth())
 		{

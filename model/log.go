@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/types"
 
@@ -34,6 +35,8 @@ func applyExplicitLogTextFilter(tx *gorm.DB, column string, value string) (*gorm
 type Log struct {
 	Id                int    `json:"id" gorm:"index:idx_created_at_id,priority:2;index:idx_user_id_id,priority:2"`
 	UserId            int    `json:"user_id" gorm:"index;index:idx_user_id_id,priority:1"`
+	BillingUserId     int    `json:"billing_user_id" gorm:"default:0;index"`
+	EnterpriseId      int    `json:"enterprise_id" gorm:"default:0;index"`
 	CreatedAt         int64  `json:"created_at" gorm:"bigint;index:idx_created_at_id,priority:1;index:idx_created_at_type"`
 	Type              int    `json:"type" gorm:"index:idx_created_at_type"`
 	Content           string `json:"content"`
@@ -174,6 +177,8 @@ func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string,
 	}
 	log := &Log{
 		UserId:           userId,
+		BillingUserId:    getLogBillingUserId(c, userId),
+		EnterpriseId:     getLogEnterpriseId(c),
 		Username:         username,
 		CreatedAt:        common.GetTimestamp(),
 		Type:             LogTypeError,
@@ -237,6 +242,8 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	}
 	log := &Log{
 		UserId:           userId,
+		BillingUserId:    getLogBillingUserId(c, userId),
+		EnterpriseId:     getLogEnterpriseId(c),
 		Username:         username,
 		CreatedAt:        common.GetTimestamp(),
 		Type:             LogTypeConsume,
@@ -270,6 +277,24 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 			LogQuotaData(userId, username, params.ModelName, params.Quota, common.GetTimestamp(), params.PromptTokens+params.CompletionTokens)
 		})
 	}
+}
+
+func getLogBillingUserId(c *gin.Context, fallbackUserId int) int {
+	if c == nil {
+		return fallbackUserId
+	}
+	billingUserId := common.GetContextKeyInt(c, constant.ContextKeyBillingUserId)
+	if billingUserId == 0 {
+		return fallbackUserId
+	}
+	return billingUserId
+}
+
+func getLogEnterpriseId(c *gin.Context) int {
+	if c == nil {
+		return 0
+	}
+	return common.GetContextKeyInt(c, constant.ContextKeyEnterpriseId)
 }
 
 type RecordTaskBillingLogParams struct {

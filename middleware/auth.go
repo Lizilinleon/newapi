@@ -384,6 +384,31 @@ func TokenAuth() func(c *gin.Context) {
 		}
 
 		userCache.WriteContext(c)
+		common.SetContextKey(c, constant.ContextKeyBillingUserId, token.UserId)
+		common.SetContextKey(c, constant.ContextKeyBillingUserEmail, userCache.Email)
+		common.SetContextKey(c, constant.ContextKeyBillingUserName, userCache.Username)
+		common.SetContextKey(c, constant.ContextKeyBillingUserQuota, userCache.Quota)
+
+		enterpriseBilling, err := model.GetEnterpriseBillingContext(token.UserId)
+		if err != nil {
+			if errors.Is(err, model.ErrEnterpriseMemberDisabled) || errors.Is(err, model.ErrEnterpriseDisabled) {
+				abortWithOpenAiMessage(c, http.StatusForbidden, err.Error(), types.ErrorCodeAccessDenied)
+				return
+			}
+			common.SysLog(fmt.Sprintf("TokenAuth GetEnterpriseBillingContext error for user %d: %v", token.UserId, err))
+			abortWithOpenAiMessage(c, http.StatusInternalServerError,
+				common.TranslateMessage(c, i18n.MsgDatabaseError))
+			return
+		}
+		if enterpriseBilling != nil {
+			common.SetContextKey(c, constant.ContextKeyEnterpriseId, enterpriseBilling.EnterpriseId)
+			common.SetContextKey(c, constant.ContextKeyEnterpriseRole, model.EnterpriseRoleMember)
+			common.SetContextKey(c, constant.ContextKeyEnterpriseStatus, model.EnterpriseMemberStatusActive)
+			common.SetContextKey(c, constant.ContextKeyBillingUserId, enterpriseBilling.OwnerUserId)
+			common.SetContextKey(c, constant.ContextKeyBillingUserEmail, enterpriseBilling.OwnerEmail)
+			common.SetContextKey(c, constant.ContextKeyBillingUserName, enterpriseBilling.OwnerName)
+			common.SetContextKey(c, constant.ContextKeyBillingUserQuota, enterpriseBilling.OwnerQuota)
+		}
 
 		userGroup := userCache.Group
 		tokenGroup := token.Group

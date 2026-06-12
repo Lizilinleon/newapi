@@ -115,6 +115,7 @@ func generateDefaultSidebarConfigForRole(userRole int) string {
 		"enabled":    true,
 		"detail":     true,
 		"token":      true,
+		"enterprise": true,
 		"log":        true,
 		"midjourney": true,
 		"task":       true,
