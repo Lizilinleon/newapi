@@ -170,7 +170,7 @@ export function ResetPasswordConfirm({
             className='w-full'
             onClick={
               newPassword
-                ? () => navigate({ to: '/dashboard', replace: true })
+                ? () => navigate({ to: '/enterprise', replace: true })
                 : handleSubmit
             }
             disabled={
@@ -190,7 +190,7 @@ export function ResetPasswordConfirm({
             <Button
               variant='link'
               className='w-full'
-              onClick={() => navigate({ to: '/dashboard', replace: true })}
+              onClick={() => navigate({ to: '/enterprise', replace: true })}
             >
               {t('Back to login')}
             </Button>

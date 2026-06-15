@@ -156,9 +156,9 @@ function MobileConsoleButton({ onNavigate }: MobileConsoleButtonProps) {
       variant='secondary'
       size='sm'
       className='h-10 w-full'
-      render={<Link to='/dashboard' onClick={onNavigate} />}
+      render={<Link to='/enterprise' onClick={onNavigate} />}
     >
-      {t('Go to Dashboard')}
+      {t('Enterprise')}
     </Button>
   )
 }

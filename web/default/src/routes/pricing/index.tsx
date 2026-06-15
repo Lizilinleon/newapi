@@ -35,6 +35,6 @@ const pricingSearchSchema = z.object({
 export const Route = createFileRoute('/pricing/')({
   validateSearch: pricingSearchSchema,
   beforeLoad: async () => {
-    throw redirect({ to: '/dashboard' })
+    throw redirect({ to: '/enterprise' })
   },
 })

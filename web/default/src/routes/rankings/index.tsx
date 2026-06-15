@@ -29,6 +29,6 @@ const rankingsSearchSchema = z.object({
 export const Route = createFileRoute('/rankings/')({
   validateSearch: rankingsSearchSchema,
   beforeLoad: async () => {
-    throw redirect({ to: '/dashboard' })
+    throw redirect({ to: '/enterprise' })
   },
 })

@@ -35,6 +35,6 @@ const modelDetailsSearchSchema = z.object({
 export const Route = createFileRoute('/pricing/$modelId/')({
   validateSearch: modelDetailsSearchSchema,
   beforeLoad: async () => {
-    throw redirect({ to: '/dashboard' })
+    throw redirect({ to: '/enterprise' })
   },
 })

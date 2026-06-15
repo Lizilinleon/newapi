@@ -21,7 +21,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 export const Route = createFileRoute('/(auth)/sign-up')({
   beforeLoad: ({ location }) => {
     throw redirect({
-      to: '/dashboard',
+      to: '/enterprise',
       search: location.search,
       replace: true,
     })

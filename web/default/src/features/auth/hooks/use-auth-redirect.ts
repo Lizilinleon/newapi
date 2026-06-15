@@ -86,7 +86,7 @@ export function useAuthRedirect() {
     }
 
     // Navigate to target page
-    const targetPath = redirectTo || '/dashboard'
+    const targetPath = redirectTo || '/enterprise'
     navigate({ to: targetPath, replace: true })
   }
 
@@ -101,14 +101,14 @@ export function useAuthRedirect() {
    * Redirect to login page
    */
   const redirectToLogin = () => {
-    navigate({ to: '/dashboard', replace: true })
+    navigate({ to: '/enterprise', replace: true })
   }
 
   /**
    * Redirect to register page
    */
   const redirectToRegister = () => {
-    navigate({ to: '/dashboard', replace: true })
+    navigate({ to: '/enterprise', replace: true })
   }
 
   return {

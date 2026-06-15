@@ -79,7 +79,7 @@ function OAuthCallback() {
 
       if (!search?.code) {
         toast.error(i18next.t('Missing code'))
-        safeNavigate('/dashboard')
+        safeNavigate('/enterprise')
         return
       }
       const isBindingFlow =
@@ -143,7 +143,7 @@ function OAuthCallback() {
       }
 
       const redirectAfterLogin = (target?: string) => {
-        const to = target || search?.redirect || '/dashboard'
+        const to = target || search?.redirect || '/enterprise'
         safeNavigate(to)
         toast.success(i18next.t('Signed in successfully!'))
       }
@@ -159,7 +159,7 @@ function OAuthCallback() {
           return
         }
         toast.error(message)
-        safeNavigate('/dashboard')
+        safeNavigate('/enterprise')
       }
 
       try {
@@ -201,7 +201,7 @@ function OAuthCallback() {
             return
           }
           toast.error(res?.data?.message || i18next.t('OAuth failed'))
-          safeNavigate('/dashboard')
+          safeNavigate('/enterprise')
           return
         }
         const message = res?.data?.message || 'OAuth failed'

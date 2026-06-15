@@ -93,14 +93,14 @@ function getSystemSettingsNavGroups(t: TFunction): NavGroup[] {
  *
  * Activates the Vercel / Cloudflare-style drill-in sidebar:
  * the root navigation is replaced by the system administration
- * groups, with a "Back to Dashboard" affordance in the header.
+ * groups, with an enterprise return affordance in the header.
  */
 export const SYSTEM_SETTINGS_VIEW: SidebarView = {
   id: 'system-settings',
   pathPattern: /^\/system-settings(\/|$)/,
   parent: {
-    to: '/dashboard/overview',
-    label: 'Back to Dashboard',
+    to: '/enterprise',
+    label: 'Enterprise',
   },
   getNavGroups: getSystemSettingsNavGroups,
 }

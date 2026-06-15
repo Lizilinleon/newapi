@@ -30,7 +30,7 @@ export type TopNavLink = {
 export function useTopNavLinks(): TopNavLink[] {
   const { t } = useTranslation()
   return useMemo(
-    () => [{ title: t('Console'), href: '/dashboard' }],
+    () => [{ title: t('Enterprise'), href: '/enterprise' }],
     [t]
   )
 }

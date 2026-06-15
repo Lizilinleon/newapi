@@ -237,9 +237,9 @@ export function PublicHeader(props: PublicHeaderProps) {
                     <Button
                       size='sm'
                       className='h-8 rounded-lg px-3.5 text-xs font-medium'
-                      render={<Link to='/dashboard' />}
+                      render={<Link to='/enterprise' />}
                     >
-                      {t('Go to Dashboard')}
+                      {t('Enterprise')}
                     </Button>
                   )}
                 </>
@@ -353,11 +353,11 @@ export function PublicHeader(props: PublicHeaderProps) {
           >
             {showAuthButtons && (
               <Link
-                to='/dashboard'
+                to='/enterprise'
                 onClick={() => setMobileOpen(false)}
                 className='bg-foreground text-background inline-flex h-10 items-center justify-center rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:opacity-80'
               >
-                {t('Go to Dashboard')}
+                {t('Enterprise')}
               </Link>
             )}
           </div>

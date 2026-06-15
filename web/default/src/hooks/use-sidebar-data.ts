@@ -17,14 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import {
-  Activity,
   Box,
   Building2,
   CreditCard,
   FileText,
   FlaskConical,
   Key,
-  LayoutDashboard,
   ListTodo,
   MessageSquare,
   Radio,
@@ -69,24 +67,14 @@ export function useSidebarData(): SidebarData {
         title: t('General'),
         items: [
           {
-            title: t('Overview'),
-            url: '/dashboard/overview',
-            icon: Activity,
-          },
-          {
-            title: t('Dashboard'),
-            url: '/dashboard/models',
-            icon: LayoutDashboard,
+            title: t('Enterprise'),
+            url: '/enterprise',
+            icon: Building2,
           },
           {
             title: t('API Keys'),
             url: '/keys',
             icon: Key,
-          },
-          {
-            title: t('Enterprise'),
-            url: '/enterprise',
-            icon: Building2,
           },
           {
             title: t('Usage Logs'),

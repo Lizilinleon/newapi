@@ -43,7 +43,7 @@ const MoreIcon = () => (
   </svg>
 )
 
-export function Hero(props: HeroProps) {
+export function Hero(_props: HeroProps) {
   const { t } = useTranslation()
   const { status } = useStatus()
   const docsUrl =
@@ -137,9 +137,9 @@ export function Hero(props: HeroProps) {
           >
             <Button
               className='group h-11 rounded-lg px-5 text-sm font-medium'
-              render={<Link to='/dashboard' />}
+              render={<Link to='/enterprise' />}
             >
-              {props.isAuthenticated ? t('Go to Dashboard') : t('Enter Console')}
+              {t('Enterprise')}
               <ArrowRight className='ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5' />
             </Button>
             {renderDocsButton()}
