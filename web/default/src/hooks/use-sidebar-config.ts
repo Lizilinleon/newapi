@@ -54,6 +54,7 @@ const DEFAULT_SIDEBAR_MODULES: SidebarModulesAdminConfig = {
     enabled: true,
     topup: true,
     personal: true,
+    settings: true,
   },
   admin: {
     enabled: true,
@@ -61,6 +62,8 @@ const DEFAULT_SIDEBAR_MODULES: SidebarModulesAdminConfig = {
     models: true,
     redemption: true,
     user: true,
+    enterpriseAdmin: true,
+    log: true,
     setting: true,
     subscription: true,
   },
@@ -108,13 +111,23 @@ const URL_TO_CONFIG_MAP: Record<string, { section: string; module: string }> = {
   '/usage-logs/task': { section: 'console', module: 'task' },
   '/wallet': { section: 'personal', module: 'topup' },
   '/profile': { section: 'personal', module: 'personal' },
+  '/settings': { section: 'personal', module: 'settings' },
+  '/settings/account-bindings': { section: 'personal', module: 'settings' },
+  '/settings/preferences': { section: 'personal', module: 'settings' },
+  '/settings/language': { section: 'personal', module: 'settings' },
+  '/settings/sidebar': { section: 'personal', module: 'settings' },
   '/channels': { section: 'admin', module: 'channel' },
   '/models': { section: 'admin', module: 'models' },
   '/models/metadata': { section: 'admin', module: 'models' },
   '/models/deployments': { section: 'admin', module: 'models' },
   '/users': { section: 'admin', module: 'user' },
+  '/enterprises': { section: 'admin', module: 'enterpriseAdmin' },
   '/redemption-codes': { section: 'admin', module: 'redemption' },
   '/subscriptions': { section: 'admin', module: 'subscription' },
+  '/admin-logs': { section: 'admin', module: 'log' },
+  '/admin-logs/common': { section: 'admin', module: 'log' },
+  '/admin-logs/drawing': { section: 'admin', module: 'log' },
+  '/admin-logs/task': { section: 'admin', module: 'log' },
   '/system-settings': { section: 'admin', module: 'setting' },
   '/system-settings/site': { section: 'admin', module: 'setting' },
 }
@@ -142,7 +155,7 @@ function parseSidebarConfig(
 
 /**
  * Parse user-level sidebar_modules. Returns null when the value is empty,
- * invalid, or otherwise unusable — the caller treats null as "do not narrow",
+ * invalid, or otherwise unusable 閳?the caller treats null as "do not narrow",
  * so legacy users with an empty sidebar_modules field keep the full admin view.
  */
 function parseUserSidebarConfig(
@@ -200,7 +213,7 @@ function isNavItemVisible(
   adminConfig: SidebarModulesAdminConfig,
   userConfig: SidebarModulesUserConfig
 ): boolean {
-  // Handle dynamic chat presets type — also runs the admin × user AND gate
+  // Handle dynamic chat presets type 閳?also runs the admin 鑴?user AND gate
   if ('type' in item && item.type === 'chat-presets') {
     const adminChat = adminConfig.chat
     const adminAllowed = Boolean(adminChat?.enabled && adminChat.chat === true)
@@ -258,13 +271,13 @@ function filterNavItems(
 }
 
 /**
- * Filter sidebar navigation groups by admin × user sidebar_modules config.
+ * Filter sidebar navigation groups by admin 鑴?user sidebar_modules config.
  *
  * Two layers, AND-combined:
- *   1. Admin (status.SidebarModulesAdmin) — authoritative, falls back to
+ *   1. Admin (status.SidebarModulesAdmin) 閳?authoritative, falls back to
  *      DEFAULT_SIDEBAR_MODULES when empty/invalid. Disabling here hides the
  *      item for everyone regardless of user preference.
- *   2. User (auth.user.sidebar_modules) — narrower overlay, null sentinel
+ *   2. User (auth.user.sidebar_modules) 閳?narrower overlay, null sentinel
  *      means "don't narrow". A section/module is only hidden if the user
  *      explicitly set it to false; undefined fields default to visible so
  *      legacy users with empty sidebar_modules keep the full admin view.
@@ -287,7 +300,7 @@ export function useSidebarConfig(navGroups: NavGroup[]): NavGroup[] {
 
   const userConfig = useMemo(() => {
     // If the backend marks the user as unable to configure the sidebar
-    // (e.g. root accounts), skip the user overlay entirely — a stale
+    // (e.g. root accounts), skip the user overlay entirely 閳?a stale
     // historical sidebar_modules value from a previous role would otherwise
     // hide admin entries for someone who has no in-product UI to restore
     // them.
@@ -310,3 +323,4 @@ export function useSidebarConfig(navGroups: NavGroup[]): NavGroup[] {
 
   return filteredNavGroups
 }
+

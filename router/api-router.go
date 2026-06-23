@@ -17,7 +17,6 @@ func SetApiRouter(router *gin.Engine) {
 	apiRouter.Use(gzip.Gzip(gzip.DefaultCompression))
 	apiRouter.Use(middleware.BodyStorageCleanup()) // 清理请求体存储
 	apiRouter.Use(middleware.GlobalAPIRateLimit())
-	apiRouter.Use(middleware.DevAutoLogin())
 	anonymousRequestBodyLimit := middleware.AnonymousRequestBodyLimit()
 	{
 		apiRouter.GET("/setup", controller.GetSetup)
@@ -27,6 +26,8 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)
 		apiRouter.GET("/notice", controller.GetNotice)
+		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
+		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
 		apiRouter.GET("/user-agreement", controller.GetUserAgreement)
 		apiRouter.GET("/privacy-policy", controller.GetPrivacyPolicy)
 		apiRouter.GET("/about", controller.GetAbout)
@@ -65,6 +66,7 @@ func SetApiRouter(router *gin.Engine) {
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/login", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, middleware.TurnstileCheck(), controller.Login)
+			userRoute.POST("/register", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.Register)
 			userRoute.POST("/login/2fa", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.Verify2FALogin)
 			userRoute.POST("/passkey/login/begin", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.PasskeyLoginBegin)
 			userRoute.POST("/passkey/login/finish", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.PasskeyLoginFinish)
@@ -293,13 +295,39 @@ func SetApiRouter(router *gin.Engine) {
 		enterpriseRoute.Use(middleware.UserAuth())
 		{
 			enterpriseRoute.GET("/summary", controller.GetEnterpriseSummary)
+			enterpriseRoute.POST("/account", controller.CreateEnterpriseAccount)
+			enterpriseRoute.POST("/account/dissolve", controller.DissolveEnterprise)
+			enterpriseRoute.POST("/account/funds", controller.TransferEnterpriseQuota)
 			enterpriseRoute.POST("/members", controller.CreateEnterpriseMember)
+			enterpriseRoute.POST("/membership/leave", controller.LeaveEnterprise)
+			enterpriseRoute.POST("/invitations/accept", controller.AcceptEnterpriseInvitation)
 			enterpriseRoute.PATCH("/members/:id", controller.UpdateEnterpriseMember)
 			enterpriseRoute.DELETE("/members/:id", controller.DeleteEnterpriseMember)
+			enterpriseRoute.POST("/members/:id/quota", controller.AllocateEnterpriseMemberQuota)
 			enterpriseRoute.GET("/members/:id/tokens", controller.GetEnterpriseMemberTokens)
-			enterpriseRoute.POST("/dev/members/:id/login", controller.DevLoginEnterpriseMember)
-			enterpriseRoute.POST("/dev/owner/login", controller.DevReturnEnterpriseOwner)
+			enterpriseRoute.POST("/members/:id/tokens", controller.CreateEnterpriseMemberToken)
 			enterpriseRoute.GET("/logs", controller.GetEnterpriseLogs)
+		}
+
+		enterpriseAdminRoute := apiRouter.Group("/enterprise/admin")
+		enterpriseAdminRoute.Use(middleware.AdminAuth())
+		{
+			enterpriseAdminRoute.GET("/accounts", controller.AdminListEnterpriseAccounts)
+			enterpriseAdminRoute.GET("/accounts/:id", controller.AdminGetEnterpriseAccount)
+			enterpriseAdminRoute.GET("/accounts/:id/members", controller.AdminListEnterpriseMembers)
+			enterpriseAdminRoute.GET("/accounts/:id/logs", controller.AdminGetEnterpriseLogs)
+			enterpriseAdminRoute.POST("/accounts/:id/quota", controller.AdminUpdateEnterpriseQuota)
+		}
+
+		adminEnterpriseRoute := apiRouter.Group("/admin/enterprises")
+		adminEnterpriseRoute.Use(middleware.AdminAuth())
+		{
+			adminEnterpriseRoute.GET("", controller.AdminListEnterpriseAccounts)
+			adminEnterpriseRoute.GET("/", controller.AdminListEnterpriseAccounts)
+			adminEnterpriseRoute.GET("/:id", controller.AdminGetEnterpriseAccount)
+			adminEnterpriseRoute.GET("/:id/members", controller.AdminListEnterpriseMembers)
+			adminEnterpriseRoute.GET("/:id/logs", controller.AdminGetEnterpriseLogs)
+			adminEnterpriseRoute.POST("/:id/quota", controller.AdminUpdateEnterpriseQuota)
 		}
 
 		redemptionRoute := apiRouter.Group("/redemption")

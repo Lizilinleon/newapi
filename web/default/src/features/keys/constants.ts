@@ -44,7 +44,7 @@ export const API_KEY_STATUSES: Record<
   },
   [API_KEY_STATUS.DISABLED]: {
     label: 'Disabled',
-    variant: 'neutral',
+    variant: 'danger',
     value: API_KEY_STATUS.DISABLED,
   },
   [API_KEY_STATUS.EXPIRED]: {

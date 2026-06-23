@@ -32,6 +32,8 @@ import { useStreamRequest } from './use-stream-request'
 
 interface UseChatHandlerOptions {
   config: PlaygroundConfig
+  apiKey?: string
+  apiBaseUrl?: string
   parameterEnabled: ParameterEnabled
   onMessageUpdate: (updater: (prev: Message[]) => Message[]) => void
 }
@@ -41,6 +43,8 @@ interface UseChatHandlerOptions {
  */
 export function useChatHandler({
   config,
+  apiKey,
+  apiBaseUrl,
   parameterEnabled,
   onMessageUpdate,
 }: UseChatHandlerOptions) {
@@ -108,8 +112,13 @@ export function useChatHandler({
         config,
         parameterEnabled
       )
+      if (apiKey?.trim()) {
+        delete payload.group
+      }
       sendStreamRequest(
         payload,
+        apiKey,
+        apiBaseUrl,
         handleStreamUpdate,
         handleStreamComplete,
         handleStreamError
@@ -117,6 +126,8 @@ export function useChatHandler({
     },
     [
       config,
+      apiKey,
+      apiBaseUrl,
       parameterEnabled,
       sendStreamRequest,
       handleStreamUpdate,
@@ -133,9 +144,12 @@ export function useChatHandler({
         config,
         parameterEnabled
       )
+      if (apiKey?.trim()) {
+        delete payload.group
+      }
 
       try {
-        const response = await sendChatCompletion(payload)
+        const response = await sendChatCompletion(payload, apiKey, apiBaseUrl)
         const choice = response.choices?.[0]
         if (!choice) return
 
@@ -171,7 +185,14 @@ export function useChatHandler({
         )
       }
     },
-    [config, parameterEnabled, onMessageUpdate, handleStreamError]
+    [
+      config,
+      apiKey,
+      apiBaseUrl,
+      parameterEnabled,
+      onMessageUpdate,
+      handleStreamError,
+    ]
   )
 
   // Send chat request (stream or non-stream based on config)

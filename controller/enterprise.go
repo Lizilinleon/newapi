@@ -2,25 +2,46 @@ package controller
 
 import (
 	"errors"
+	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/gin-gonic/gin"
 )
 
 type createEnterpriseMemberRequest struct {
+	Identifier  string `json:"identifier"`
 	Username    string `json:"username"`
-	Password    string `json:"password"`
 	DisplayName string `json:"display_name"`
 	Email       string `json:"email"`
-	Group       string `json:"group"`
+}
+
+type createEnterpriseAccountRequest struct {
+	Name string `json:"name"`
 }
 
 type updateEnterpriseMemberRequest struct {
 	Status      int    `json:"status"`
 	DisplayName string `json:"display_name"`
+}
+
+type allocateEnterpriseQuotaRequest struct {
+	AllocatedQuota   int     `json:"allocated_quota"`
+	WarningThreshold float64 `json:"warning_threshold"`
+}
+
+type adminEnterpriseQuotaRequest struct {
+	Mode  string `json:"mode"`
+	Quota int    `json:"quota"`
+}
+
+type transferEnterpriseQuotaRequest struct {
+	Quota int `json:"quota"`
 }
 
 func GetEnterpriseSummary(c *gin.Context) {
@@ -32,28 +53,85 @@ func GetEnterpriseSummary(c *gin.Context) {
 	common.ApiSuccess(c, summary)
 }
 
+func CreateEnterpriseAccount(c *gin.Context) {
+	var req createEnterpriseAccountRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiError(c, errors.New("invalid request body"))
+		return
+	}
+	account, err := model.CreateEnterpriseAccount(c.GetInt("id"), strings.TrimSpace(req.Name))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, account)
+}
+
 func CreateEnterpriseMember(c *gin.Context) {
 	var req createEnterpriseMemberRequest
 	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
 		common.ApiError(c, errors.New("invalid request body"))
 		return
 	}
-	req.Username = strings.TrimSpace(req.Username)
 	req.DisplayName = strings.TrimSpace(req.DisplayName)
-	req.Email = strings.TrimSpace(req.Email)
-	req.Group = strings.TrimSpace(req.Group)
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	if err := common.Validate.Var(req.Email, "required,email"); err != nil {
+		common.ApiError(c, errors.New("valid email is required"))
+		return
+	}
 
-	member, err := model.CreateEnterpriseMember(c.GetInt("id"), model.EnterpriseCreateMemberInput{
-		Username:    req.Username,
-		Password:    req.Password,
-		DisplayName: req.DisplayName,
-		Email:       req.Email,
-		Group:       req.Group,
-	})
+	invitation, account, owner, err := model.CreateEnterpriseInvitation(c.GetInt("id"), req.Email, req.DisplayName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
+	link := buildEnterpriseInvitationLink(c, invitation.Token)
+	subject := fmt.Sprintf("%s enterprise invitation", common.SystemName)
+	content := fmt.Sprintf("<p>Hello,</p>"+
+		"<p>%s invited you to join the enterprise <strong>%s</strong>.</p>"+
+		"<p>Open this link while signed in with <strong>%s</strong> to accept:</p>"+
+		"<p><a href=\"%s\">Accept invitation</a></p>"+
+		"<p>If the button does not work, copy this link into your browser:<br>%s</p>",
+		owner.Username, account.Name, req.Email, link, link)
+	if err := common.SendEmail(subject, req.Email, content); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{"email": req.Email})
+}
+
+func buildEnterpriseInvitationLink(c *gin.Context, token string) string {
+	base := strings.TrimRight(c.GetHeader("Origin"), "/")
+	if base == "" {
+		base = strings.TrimRight(system_setting.ServerAddress, "/")
+	}
+	if base == "" {
+		scheme := c.GetHeader("X-Forwarded-Proto")
+		if scheme == "" {
+			scheme = "http"
+			if c.Request.TLS != nil {
+				scheme = "https"
+			}
+		}
+		base = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	}
+	return fmt.Sprintf("%s/enterprise?invite_token=%s", base, url.QueryEscape(token))
+}
+
+func AcceptEnterpriseInvitation(c *gin.Context) {
+	var req struct {
+		Token string `json:"token"`
+	}
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiError(c, errors.New("invalid request body"))
+		return
+	}
+	member, err := model.AcceptEnterpriseInvitation(c.GetInt("id"), req.Token)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	service.CheckAndSendEnterpriseBalanceNotify(member.EnterpriseId, nil)
 	common.ApiSuccess(c, member)
 }
 
@@ -89,6 +167,55 @@ func DeleteEnterpriseMember(c *gin.Context) {
 	common.ApiSuccess(c, nil)
 }
 
+func LeaveEnterprise(c *gin.Context) {
+	if err := model.LeaveEnterpriseMembership(c.GetInt("id")); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, nil)
+}
+
+func DissolveEnterprise(c *gin.Context) {
+	if err := model.DetachEnterpriseOwner(c.GetInt("id")); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, nil)
+}
+
+func TransferEnterpriseQuota(c *gin.Context) {
+	var req transferEnterpriseQuotaRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiError(c, errors.New("invalid request body"))
+		return
+	}
+	summary, err := model.TransferUserQuotaToEnterprise(c.GetInt("id"), req.Quota)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, summary)
+}
+
+func AllocateEnterpriseMemberQuota(c *gin.Context) {
+	memberId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	var req allocateEnterpriseQuotaRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiError(c, errors.New("invalid request body"))
+		return
+	}
+	member, err := model.AllocateEnterpriseMemberQuota(c.GetInt("id"), memberId, req.AllocatedQuota, req.WarningThreshold)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, member)
+}
+
 func GetEnterpriseMemberTokens(c *gin.Context) {
 	memberId, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -96,7 +223,16 @@ func GetEnterpriseMemberTokens(c *gin.Context) {
 		return
 	}
 	pageInfo := common.GetPageQuery(c)
-	tokens, total, err := model.GetEnterpriseMemberTokens(c.GetInt("id"), memberId, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	status, _ := strconv.Atoi(c.Query("status"))
+	tokens, total, err := model.SearchEnterpriseMemberTokensForViewer(
+		c.GetInt("id"),
+		memberId,
+		c.Query("keyword"),
+		c.Query("token"),
+		status,
+		pageInfo.GetStartIdx(),
+		pageInfo.GetPageSize(),
+	)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -104,6 +240,49 @@ func GetEnterpriseMemberTokens(c *gin.Context) {
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(buildMaskedTokenResponses(tokens))
 	common.ApiSuccess(c, pageInfo)
+}
+
+func CreateEnterpriseMemberToken(c *gin.Context) {
+	memberId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	member, err := model.GetEnterpriseMemberByOwner(c.GetInt("id"), memberId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if member.Status != model.EnterpriseMemberStatusActive {
+		common.ApiError(c, errors.New("enterprise member is not active"))
+		return
+	}
+	token := model.Token{}
+	if err := c.ShouldBindJSON(&token); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if len(token.Name) > 50 {
+		common.ApiError(c, errors.New("token name is too long"))
+		return
+	}
+	if !token.UnlimitedQuota {
+		if token.RemainQuota < 0 {
+			common.ApiError(c, errors.New("token quota cannot be negative"))
+			return
+		}
+		maxQuotaValue := int((1000000000 * common.QuotaPerUnit))
+		if token.RemainQuota > maxQuotaValue {
+			common.ApiError(c, fmt.Errorf("token quota exceeds max: %d", maxQuotaValue))
+			return
+		}
+	}
+	created, err := createTokenForUser(token, member.MemberUserId, member.EnterpriseId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, buildMaskedTokenResponse(created))
 }
 
 func GetEnterpriseLogs(c *gin.Context) {
@@ -114,8 +293,9 @@ func GetEnterpriseLogs(c *gin.Context) {
 	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
 	tokenName := c.Query("token_name")
 	modelName := c.Query("model_name")
+	keyword := c.Query("keyword")
 
-	logs, total, err := model.GetEnterpriseLogs(
+	logs, total, err := model.GetEnterpriseLogsForViewer(
 		c.GetInt("id"),
 		memberId,
 		logType,
@@ -123,6 +303,7 @@ func GetEnterpriseLogs(c *gin.Context) {
 		endTimestamp,
 		modelName,
 		tokenName,
+		keyword,
 		pageInfo.GetStartIdx(),
 		pageInfo.GetPageSize(),
 	)
@@ -135,83 +316,118 @@ func GetEnterpriseLogs(c *gin.Context) {
 	common.ApiSuccess(c, pageInfo)
 }
 
-func DevLoginEnterpriseMember(c *gin.Context) {
-	memberId, err := strconv.Atoi(c.Param("id"))
+func AdminListEnterpriseAccounts(c *gin.Context) {
+	pageInfo := common.GetPageQuery(c)
+	accounts, total, err := model.SearchEnterpriseAccounts(
+		c.Query("keyword"),
+		pageInfo.GetStartIdx(),
+		pageInfo.GetPageSize(),
+	)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-
-	summary, err := model.GetEnterpriseSummary(c.GetInt("id"))
-	if err != nil {
-		common.ApiError(c, err)
-		return
-	}
-	if summary.Mode != model.EnterpriseRoleOwner {
-		common.ApiError(c, errors.New("only enterprise owner can switch to member"))
-		return
-	}
-
-	var target *model.EnterpriseMemberView
-	for i := range summary.Members {
-		if summary.Members[i].Id == memberId {
-			target = &summary.Members[i]
-			break
-		}
-	}
-	if target == nil {
-		common.ApiError(c, errors.New("enterprise member not found"))
-		return
-	}
-
-	user, err := model.GetUserById(target.MemberUserId, false)
-	if err != nil {
-		common.ApiError(c, err)
-		return
-	}
-	data, err := switchDevSessionUser(c, user)
-	if err != nil {
-		common.ApiError(c, err)
-		return
-	}
-	common.ApiSuccess(c, data)
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(accounts)
+	common.ApiSuccess(c, pageInfo)
 }
 
-func DevReturnEnterpriseOwner(c *gin.Context) {
-	summary, err := model.GetEnterpriseSummary(c.GetInt("id"))
+func AdminGetEnterpriseAccount(c *gin.Context) {
+	enterpriseId, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	if summary.Owner == nil {
-		common.ApiError(c, errors.New("enterprise owner not found"))
-		return
-	}
-
-	user, err := model.GetUserById(summary.Owner.Id, false)
+	account, err := model.AdminGetEnterpriseAccountView(enterpriseId)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	data, err := switchDevSessionUser(c, user)
-	if err != nil {
-		common.ApiError(c, err)
-		return
-	}
-	common.ApiSuccess(c, data)
+	common.ApiSuccess(c, account)
 }
 
-func switchDevSessionUser(c *gin.Context, user *model.User) (map[string]any, error) {
-	if err := saveSessionUser(c, user); err != nil {
-		return nil, err
+func AdminListEnterpriseMembers(c *gin.Context) {
+	enterpriseId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
 	}
-	model.UpdateUserLastLoginAt(user.Id)
-	return map[string]any{
-		"id":           user.Id,
-		"username":     user.Username,
-		"display_name": user.DisplayName,
-		"role":         user.Role,
-		"status":       user.Status,
-		"group":        user.Group,
-	}, nil
+	members, totals, err := model.AdminListEnterpriseMembers(enterpriseId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{
+		"items":  members,
+		"totals": totals,
+	})
+}
+
+func AdminGetEnterpriseLogs(c *gin.Context) {
+	enterpriseId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	pageInfo := common.GetPageQuery(c)
+	logType, _ := strconv.Atoi(c.Query("type"))
+	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+	tokenName := c.Query("token_name")
+	modelName := c.Query("model_name")
+	keyword := c.Query("keyword")
+
+	logs, total, err := model.AdminGetEnterpriseLogs(
+		enterpriseId,
+		logType,
+		startTimestamp,
+		endTimestamp,
+		modelName,
+		tokenName,
+		keyword,
+		pageInfo.GetStartIdx(),
+		pageInfo.GetPageSize(),
+	)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(logs)
+	common.ApiSuccess(c, pageInfo)
+}
+
+func AdminUpdateEnterpriseQuota(c *gin.Context) {
+	enterpriseId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	var req adminEnterpriseQuotaRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiError(c, errors.New("invalid request body"))
+		return
+	}
+	if req.Quota < 0 {
+		common.ApiError(c, errors.New("quota cannot be negative"))
+		return
+	}
+	mode := strings.TrimSpace(req.Mode)
+	if mode == "" {
+		mode = "set"
+	}
+	var account *model.AdminEnterpriseAccountView
+	switch mode {
+	case "add":
+		account, err = model.AdminAddEnterpriseQuota(enterpriseId, req.Quota)
+	case "set":
+		account, err = model.AdminSetEnterpriseQuota(enterpriseId, req.Quota)
+	default:
+		err = errors.New("invalid quota update mode")
+	}
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, account)
 }

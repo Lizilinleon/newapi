@@ -33,6 +33,16 @@ import {
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -100,6 +110,7 @@ export function DataTableRowActions<TData>({
   const isEnabled = apiKey.status === API_KEY_STATUS.ENABLED
   const { chatPresets, serverAddress } = useChatPresets()
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
+  const [disableConfirmOpen, setDisableConfirmOpen] = useState(false)
   const resolvedRealKey = resolvedKeys[apiKey.id]
   const isRealKeyLoading = Boolean(loadingKeys[apiKey.id])
 
@@ -189,15 +200,31 @@ export function DataTableRowActions<TData>({
     }
   }
 
+  const handleOpenCCSwitch = useCallback(async () => {
+    const realKey = await resolveRealKey(apiKey.id)
+    if (!realKey) return
+    setResolvedKey(realKey)
+    setCurrentRow(apiKey)
+    setOpen('cc-switch')
+  }, [apiKey, resolveRealKey, setCurrentRow, setOpen, setResolvedKey])
+
   return (
-    <div className='flex items-center justify-end gap-1'>
+    <>
+      <div className='flex items-center justify-end gap-1'>
       <Tooltip>
         <TooltipTrigger
           render={
             <Button
               variant='ghost'
               size='icon-sm'
-              onClick={handleToggleStatus}
+              onClick={(event) => {
+                if (isEnabled) {
+                  event.stopPropagation()
+                  setDisableConfirmOpen(true)
+                  return
+                }
+                void handleToggleStatus(event)
+              }}
               disabled={isTogglingStatus}
               aria-label={isEnabled ? t('Disable') : t('Enable')}
               className={
@@ -219,6 +246,27 @@ export function DataTableRowActions<TData>({
         <TooltipContent>
           {isEnabled ? t('Disable') : t('Enable')}
         </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant='ghost'
+              size='icon-sm'
+              onClick={handleOpenCCSwitch}
+              disabled={isRealKeyLoading}
+              aria-label={t('CC Switch')}
+            />
+          }
+        >
+          {isRealKeyLoading ? (
+            <Loader2 className='size-4 animate-spin' />
+          ) : (
+            <ArrowRightLeft className='size-4' />
+          )}
+        </TooltipTrigger>
+        <TooltipContent>{t('CC Switch')}</TooltipContent>
       </Tooltip>
 
       <DropdownMenu modal={false} onOpenChange={handleMenuOpenChange}>
@@ -276,20 +324,6 @@ export function DataTableRowActions<TData>({
               <Edit size={16} />
             </DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={async () => {
-              const realKey = await resolveRealKey(apiKey.id)
-              if (!realKey) return
-              setResolvedKey(realKey)
-              setCurrentRow(apiKey)
-              setOpen('cc-switch')
-            }}
-          >
-            {t('CC Switch')}
-            <DropdownMenuShortcut>
-              <ArrowRightLeft size={16} />
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
           {hasChatPresets && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>{t('Chat')}</DropdownMenuSubTrigger>
@@ -325,6 +359,38 @@ export function DataTableRowActions<TData>({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+      </div>
+      <AlertDialog
+        open={disableConfirmOpen}
+        onOpenChange={setDisableConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('Disable this API key?')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                'After disabling, this API key can no longer be used for requests until you enable it again.'
+              )}{' '}
+              <span className='font-medium'>{apiKey.name}</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isTogglingStatus}>
+              {t('Cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant='destructive'
+              disabled={isTogglingStatus}
+              onClick={(event) => {
+                void handleToggleStatus(event)
+                setDisableConfirmOpen(false)
+              }}
+            >
+              {isTogglingStatus ? t('Disabling...') : t('Disable')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

@@ -16,13 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import { useStatus } from '@/hooks/use-status'
 import { Button } from '@/components/ui/button'
@@ -35,21 +36,11 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Dialog } from '@/components/dialog'
 import { PasswordInput } from '@/components/password-input'
-import { Turnstile } from '@/components/turnstile'
-import { register, wechatLoginByCode } from '@/features/auth/api'
-import { LegalConsent } from '@/features/auth/components/legal-consent'
-import { OAuthProviders } from '@/features/auth/components/oauth-providers'
+import { register } from '@/features/auth/api'
 import { registerFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
 import { useEmailVerification } from '@/features/auth/hooks/use-email-verification'
-import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
-import {
-  getAffiliateCode,
-  saveAffiliateCode,
-} from '@/features/auth/lib/storage'
 
 export function SignUpForm({
   className,
@@ -57,31 +48,14 @@ export function SignUpForm({
 }: React.HTMLAttributes<HTMLFormElement>) {
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
-  const [verificationCode, setVerificationCode] = useState('')
-  const [agreedToLegal, setAgreedToLegal] = useState(false)
-  const [wechatCode, setWeChatCode] = useState('')
-  const [isWeChatDialogOpen, setIsWeChatDialogOpen] = useState(false)
-  const [isWeChatSubmitting, setIsWeChatSubmitting] = useState(false)
-  const legalConsentErrorMessage = t('Please agree to the legal terms first')
-
+  const [codeSentFor, setCodeSentFor] = useState('')
+  const { redirectToLogin } = useAuthRedirect()
   const { status } = useStatus()
-  const {
-    isTurnstileEnabled,
-    turnstileSiteKey,
-    turnstileToken,
-    setTurnstileToken,
-    validateTurnstile,
-  } = useTurnstile()
-  const { redirectToLogin, handleLoginSuccess } = useAuthRedirect()
-  const {
-    isSending: isSendingCode,
-    secondsLeft,
-    isActive,
-    sendCode,
-  } = useEmailVerification({
-    turnstileToken,
-    validateTurnstile,
-  })
+  const emailVerificationEnabled = Boolean(
+    status?.email_verification ?? status?.data?.email_verification
+  )
+  const { isSending, secondsLeft, isActive, sendCode } = useEmailVerification()
+  const resetAuth = useAuthStore((state) => state.auth.reset)
 
   const form = useForm<z.infer<typeof registerFormSchema>>({
     resolver: zodResolver(registerFormSchema),
@@ -90,135 +64,62 @@ export function SignUpForm({
       email: '',
       password: '',
       confirmPassword: '',
+      verificationCode: '',
     },
   })
-
-  const emailValue = form.watch('email')
-  const emailVerificationRequired = !!status?.email_verification
-  const hasUserAgreement = Boolean(status?.user_agreement_enabled)
-  const hasPrivacyPolicy = Boolean(status?.privacy_policy_enabled)
-  const requiresLegalConsent = hasUserAgreement || hasPrivacyPolicy
-  const oauthRegisterEnabled =
-    status?.oauth_register_enabled ??
-    status?.data?.oauth_register_enabled ??
-    true
-  const hasWeChatLogin = Boolean(status?.wechat_login)
-  const turnstileReady = !isTurnstileEnabled || Boolean(turnstileToken)
-
-  const wechatQrCodeUrl = useMemo(() => {
-    return (
-      status?.wechat_qrcode ||
-      status?.wechat_qr_code ||
-      status?.wechat_qrcode_image_url ||
-      status?.wechat_qr_code_image_url ||
-      status?.wechat_account_qrcode_image_url ||
-      status?.WeChatAccountQRCodeImageURL ||
-      status?.data?.wechat_qrcode ||
-      status?.data?.WeChatAccountQRCodeImageURL ||
-      ''
-    )
-  }, [status])
+  const email = form.watch('email')
+  const username = form.watch('username')
+  const normalizedWatchedEmail = email.trim().toLowerCase()
 
   useEffect(() => {
-    if (requiresLegalConsent) {
-      setAgreedToLegal(false)
-    } else {
-      setAgreedToLegal(true)
+    if (normalizedWatchedEmail !== codeSentFor) {
+      form.setValue('verificationCode', '')
     }
-  }, [requiresLegalConsent])
+  }, [codeSentFor, form, normalizedWatchedEmail])
 
-  useEffect(() => {
-    const aff = new URLSearchParams(window.location.search).get('aff')?.trim()
-    if (aff) {
-      saveAffiliateCode(aff)
-    }
-  }, [])
+  async function handleSendCode() {
+    const valid = await form.trigger(['username', 'email'])
+    if (!valid) return
+    const normalizedEmail = normalizedWatchedEmail
+    const sent = await sendCode(normalizedEmail, username.trim())
+    if (sent) setCodeSentFor(normalizedEmail)
+  }
 
   async function onSubmit(data: z.infer<typeof registerFormSchema>) {
-    if (requiresLegalConsent && !agreedToLegal) {
-      toast.error(legalConsentErrorMessage)
-      return
-    }
-
-    // Validate email verification if required
-    if (emailVerificationRequired) {
-      if (!data.email) {
-        toast.error(t('Please enter your email'))
-        return
-      }
+    const normalizedEmail = data.email.trim().toLowerCase()
+    const verificationCode = data.verificationCode?.trim() ?? ''
+    if (emailVerificationEnabled) {
       if (!verificationCode) {
-        toast.error(t('Please enter the verification code'))
+        toast.error(t('Please enter the email verification code'))
+        return
+      }
+      if (normalizedEmail !== codeSentFor) {
+        toast.error(t('Please send a new verification code for this email'))
         return
       }
     }
-
-    if (!validateTurnstile()) return
-
     setIsLoading(true)
     try {
       const res = await register({
-        username: data.username,
+        username: data.username.trim(),
+        email: normalizedEmail,
         password: data.password,
-        email: data.email || undefined,
-        verification_code: verificationCode || undefined,
-        aff_code: getAffiliateCode(),
-        turnstile: turnstileToken,
+        verification_code: emailVerificationEnabled
+          ? verificationCode
+          : undefined,
       })
 
       if (res?.success) {
+        resetAuth()
         toast.success(t('Account created! Please sign in'))
         redirectToLogin()
       } else {
         toast.error(res?.message || t('Failed to create account'))
       }
     } catch (_error) {
-      // Errors are handled by global interceptor
+      toast.error(t('Failed to create account'))
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  async function handleSendVerificationCode() {
-    await sendCode(emailValue || '')
-  }
-
-  const handleOpenWeChatDialog = () => {
-    if (requiresLegalConsent && !agreedToLegal) {
-      toast.error(legalConsentErrorMessage)
-      return
-    }
-
-    setIsWeChatDialogOpen(true)
-  }
-
-  const handleWeChatDialogChange = (open: boolean) => {
-    setIsWeChatDialogOpen(open)
-    if (!open) {
-      setWeChatCode('')
-      setIsWeChatSubmitting(false)
-    }
-  }
-
-  async function handleWeChatLogin() {
-    if (!wechatCode.trim()) {
-      toast.error(t('Please enter the verification code'))
-      return
-    }
-
-    setIsWeChatSubmitting(true)
-    try {
-      const res = await wechatLoginByCode(wechatCode)
-      if (res?.success) {
-        await handleLoginSuccess(res.data as { id?: number } | null)
-        toast.success(t('Signed in via WeChat'))
-        handleWeChatDialogChange(false)
-      } else {
-        toast.error(res?.message || t('Login failed'))
-      }
-    } catch (_error) {
-      toast.error(t('Login failed'))
-    } finally {
-      setIsWeChatSubmitting(false)
     }
   }
 
@@ -229,7 +130,6 @@ export function SignUpForm({
         className={cn('grid gap-4', className)}
         {...props}
       >
-        {/* Username Field */}
         <FormField
           control={form.control}
           name='username'
@@ -244,7 +144,62 @@ export function SignUpForm({
           )}
         />
 
-        {/* Password Field */}
+        <FormField
+          control={form.control}
+          name='email'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('Email')}</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder={t('name@example.com')}
+                  type='email'
+                  autoComplete='email'
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {emailVerificationEnabled && (
+          <FormField
+            control={form.control}
+            name='verificationCode'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('Email verification code')}</FormLabel>
+                <div className='flex gap-2'>
+                  <FormControl>
+                    <Input
+                      placeholder={t('Enter the 6-digit code')}
+                      inputMode='numeric'
+                      autoComplete='one-time-code'
+                      maxLength={6}
+                      {...field}
+                    />
+                  </FormControl>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    className='shrink-0'
+                    disabled={isSending || isActive || isLoading}
+                    onClick={handleSendCode}
+                  >
+                    {isSending ? (
+                      <Loader2 className='h-4 w-4 animate-spin' />
+                    ) : null}
+                    {isActive
+                      ? t('Resend in {{seconds}}s', { seconds: secondsLeft })
+                      : t('Send code')}
+                  </Button>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
         <FormField
           control={form.control}
           name='password'
@@ -254,6 +209,7 @@ export function SignUpForm({
               <FormControl>
                 <PasswordInput
                   placeholder={t('Enter password (8-20 characters)')}
+                  autoComplete='new-password'
                   {...field}
                 />
               </FormControl>
@@ -262,7 +218,6 @@ export function SignUpForm({
           )}
         />
 
-        {/* Confirm Password Field */}
         <FormField
           control={form.control}
           name='confirmPassword'
@@ -270,177 +225,26 @@ export function SignUpForm({
             <FormItem>
               <FormLabel>{t('Confirm password')}</FormLabel>
               <FormControl>
-                <PasswordInput placeholder={t('Confirm password')} {...field} />
+                <PasswordInput
+                  placeholder={t('Confirm password')}
+                  autoComplete='new-password'
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {/* Email Verification Section */}
-        {emailVerificationRequired && (
-          <>
-            {/* Email Field */}
-            <FormField
-              control={form.control}
-              name='email'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    {t('Email (required for verification)')}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder={t('name@example.com')}
-                      type='email'
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Verification Code Field */}
-            <div className='flex items-end gap-2'>
-              <div className='flex-1'>
-                <Input
-                  placeholder={t('Verification code')}
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                />
-              </div>
-              <Button
-                variant='outline'
-                type='button'
-                disabled={
-                  isLoading ||
-                  isSendingCode ||
-                  isActive ||
-                  !emailValue ||
-                  !turnstileReady
-                }
-                onClick={handleSendVerificationCode}
-              >
-                {isActive ? (
-                  t('Resend ({{seconds}}s)', { seconds: secondsLeft })
-                ) : isSendingCode ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                ) : (
-                  t('Send code')
-                )}
-              </Button>
-            </div>
-          </>
-        )}
-
-        {/* Turnstile */}
-        {isTurnstileEnabled && (
-          <div className='mt-2'>
-            <Turnstile
-              siteKey={turnstileSiteKey}
-              onVerify={setTurnstileToken}
-            />
-          </div>
-        )}
-
-        <LegalConsent
-          status={status}
-          checked={agreedToLegal}
-          onCheckedChange={setAgreedToLegal}
-          className='mt-1'
-        />
-
-        {/* Submit Button */}
         <Button
           type='submit'
           className='mt-2 w-full justify-center gap-2'
-          disabled={
-            isLoading ||
-            (requiresLegalConsent && !agreedToLegal) ||
-            !turnstileReady
-          }
+          disabled={isLoading}
         >
           {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : null}
           {t('Create account')}
         </Button>
-
-        {oauthRegisterEnabled && (
-          <OAuthProviders
-            status={status}
-            disabled={isLoading || (requiresLegalConsent && !agreedToLegal)}
-            onWeChatLogin={hasWeChatLogin ? handleOpenWeChatDialog : undefined}
-            isWeChatLoading={isWeChatSubmitting}
-            className='pt-2'
-          />
-        )}
       </form>
-
-      {hasWeChatLogin && (
-        <Dialog
-          open={isWeChatDialogOpen}
-          onOpenChange={handleWeChatDialogChange}
-          title={t('WeChat sign in')}
-          description={t(
-            'Scan the QR code to follow the official account and reply with “验证码” to receive your verification code.'
-          )}
-          contentClassName='max-w-sm'
-          headerClassName='text-left'
-          contentHeight='auto'
-          bodyClassName='space-y-4'
-          footer={
-            <>
-              <Button
-                type='button'
-                variant='outline'
-                onClick={() => handleWeChatDialogChange(false)}
-                disabled={isWeChatSubmitting}
-              >
-                {t('Cancel')}
-              </Button>
-              <Button
-                type='button'
-                onClick={handleWeChatLogin}
-                disabled={
-                  isWeChatSubmitting ||
-                  !wechatCode.trim() ||
-                  (requiresLegalConsent && !agreedToLegal)
-                }
-                className='gap-2'
-              >
-                {isWeChatSubmitting ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                ) : null}
-                {t('Confirm')}
-              </Button>
-            </>
-          }
-        >
-          {wechatQrCodeUrl ? (
-            <div className='flex justify-center'>
-              <img
-                src={wechatQrCodeUrl}
-                alt={t('WeChat login QR code')}
-                className='h-40 w-40 rounded-md border object-contain'
-              />
-            </div>
-          ) : (
-            <p className='text-muted-foreground text-sm'>
-              {t('QR code is not configured. Please contact support.')}
-            </p>
-          )}
-          <div className='grid gap-2'>
-            <Label htmlFor='wechat-code'>{t('Verification code')}</Label>
-            <Input
-              id='wechat-code'
-              placeholder={t('Enter the verification code')}
-              value={wechatCode}
-              onChange={(event) => setWeChatCode(event.target.value)}
-              autoComplete='one-time-code'
-            />
-          </div>
-        </Dialog>
-      )}
     </Form>
   )
 }

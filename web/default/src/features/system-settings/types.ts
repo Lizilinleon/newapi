@@ -276,6 +276,7 @@ export type OperationsSettings = {
   SelfUseModeEnabled: boolean
   ChannelDisableThreshold: string
   QuotaRemindThreshold: string
+  UserQuotaNotifyEnabled: boolean
   AutomaticDisableChannelEnabled: boolean
   AutomaticEnableChannelEnabled: boolean
   AutomaticDisableKeywords: string
@@ -283,6 +284,8 @@ export type OperationsSettings = {
   AutomaticRetryStatusCodes: string
   'monitor_setting.auto_test_channel_enabled': boolean
   'monitor_setting.auto_test_channel_minutes': number
+  'enterprise_setting.balance_email_notify_enabled': boolean
+  'enterprise_setting.balance_warning_percent': number
   SMTPServer: string
   SMTPPort: string
   SMTPAccount: string

@@ -35,6 +35,9 @@ export const MESSAGE_STATUS = {
 // API endpoints
 export const API_ENDPOINTS = {
   CHAT_COMPLETIONS: '/pg/chat/completions',
+  TOKEN_BASE_URL: '/v1',
+  TOKEN_CHAT_COMPLETIONS: '/v1/chat/completions',
+  TOKEN_MODELS: '/v1/models',
   USER_MODELS: '/api/user/models',
   USER_GROUPS: '/api/user/self/groups',
 } as const
@@ -70,6 +73,8 @@ export const STORAGE_KEYS = {
   CONFIG: 'playground_config',
   MESSAGES: 'playground_messages',
   PARAMETER_ENABLED: 'playground_parameter_enabled',
+  API_KEY: 'playground_api_key',
+  API_BASE_URL: 'playground_api_base_url',
 } as const
 
 // Error messages

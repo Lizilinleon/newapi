@@ -101,14 +101,20 @@ export function useAuthRedirect() {
    * Redirect to login page
    */
   const redirectToLogin = () => {
-    navigate({ to: '/enterprise', replace: true })
+    auth.reset()
+    try {
+      window.localStorage.removeItem('uid')
+    } catch {
+      // ignore storage cleanup errors
+    }
+    navigate({ to: '/sign-in', replace: true })
   }
 
   /**
    * Redirect to register page
    */
   const redirectToRegister = () => {
-    navigate({ to: '/enterprise', replace: true })
+    navigate({ to: '/sign-up', replace: true })
   }
 
   return {

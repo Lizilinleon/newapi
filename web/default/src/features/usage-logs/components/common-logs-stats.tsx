@@ -17,18 +17,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { getRouteApi } from '@tanstack/react-router'
+import { useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { formatLogQuota } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { useIsAdmin } from '@/hooks/use-admin'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getLogStats, getUserLogStats } from '../api'
 import { DEFAULT_LOG_STATS } from '../constants'
 import { buildApiParams } from '../lib/utils'
 import { useUsageLogsContext } from './usage-logs-provider'
-
-const route = getRouteApi('/_authenticated/usage-logs/$section')
 
 function StatBadge(props: {
   label: string
@@ -46,24 +43,27 @@ function StatBadge(props: {
   )
 }
 
-export function CommonLogsStats() {
+interface CommonLogsStatsProps {
+  isAdminView?: boolean
+}
+
+export function CommonLogsStats({ isAdminView = false }: CommonLogsStatsProps) {
   const { t } = useTranslation()
-  const isAdmin = useIsAdmin()
-  const searchParams = route.useSearch()
+  const searchParams = useSearch({ strict: false }) as Record<string, unknown>
   const { sensitiveVisible } = useUsageLogsContext()
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['usage-logs-stats', isAdmin, searchParams],
+    queryKey: ['usage-logs-stats', isAdminView, searchParams],
     queryFn: async () => {
       const params = buildApiParams({
         page: 1,
         pageSize: 1,
         searchParams,
         columnFilters: [],
-        isAdmin,
+        isAdmin: isAdminView,
       })
 
-      const result = isAdmin
+      const result = isAdminView
         ? await getLogStats(params)
         : await getUserLogStats(params)
 
@@ -88,7 +88,7 @@ export function CommonLogsStats() {
     <div className='flex flex-wrap items-center gap-2'>
       <StatBadge
         label={t('Usage')}
-        value={sensitiveVisible ? formatLogQuota(stats?.quota || 0) : '••••'}
+        value={sensitiveVisible ? formatLogQuota(stats?.quota || 0) : '****'}
         accent='bg-sky-500/70'
       />
       <StatBadge
@@ -104,3 +104,4 @@ export function CommonLogsStats() {
     </div>
   )
 }
+

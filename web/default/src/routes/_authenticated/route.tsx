@@ -17,9 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { useAuthStore } from '@/stores/auth-store'
 import { getSelf } from '@/lib/api'
 import { AuthenticatedLayout } from '@/components/layout'
-import { useAuthStore } from '@/stores/auth-store'
 
 // Avoid repeating the same self-check on every navigation once the dev
 // session has been confirmed during this browser session.
@@ -37,8 +37,8 @@ export const Route = createFileRoute('/_authenticated')({
       } else {
         auth.reset()
         throw redirect({
-          to: '/500',
-          search: { from: location.href },
+          to: '/sign-in',
+          search: { redirect: location.href },
         })
       }
     }

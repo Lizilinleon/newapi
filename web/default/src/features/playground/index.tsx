@@ -35,14 +35,19 @@ export function Playground() {
     messages,
     models,
     groups,
+    apiKey,
+    apiBaseUrl,
     updateMessages,
     setModels,
     setGroups,
     updateConfig,
+    updateApiConnection,
   } = usePlaygroundState()
 
   const { sendChat, stopGeneration, isGenerating } = useChatHandler({
     config,
+    apiKey,
+    apiBaseUrl,
     parameterEnabled,
     onMessageUpdate: updateMessages,
   })
@@ -53,11 +58,14 @@ export function Playground() {
   )
 
   // Load models
+  const apiKeyQueryKey = apiKey
+    ? `${apiKey.length}:${apiKey.slice(-4)}:${apiBaseUrl || 'default'}`
+    : 'session'
   const { data: modelsData, isLoading: isLoadingModels } = useQuery({
-    queryKey: ['playground-models'],
+    queryKey: ['playground-models', apiKeyQueryKey],
     queryFn: async () => {
       try {
-        return await getUserModels()
+        return await getUserModels(apiKey, apiBaseUrl)
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -214,8 +222,11 @@ export function Playground() {
           groupValue={config.group}
           isGenerating={isGenerating}
           isModelLoading={isLoadingModels}
+          apiKey={apiKey}
+          apiBaseUrl={apiBaseUrl}
           modelValue={config.model}
           models={models}
+          onApiConnectionChange={updateApiConnection}
           onGroupChange={(value) => updateConfig('group', value)}
           onModelChange={(value) => updateConfig('model', value)}
           onStop={stopGeneration}

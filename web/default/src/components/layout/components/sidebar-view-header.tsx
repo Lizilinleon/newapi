@@ -42,26 +42,28 @@ type SidebarViewHeaderProps = {
 export function SidebarViewHeader(props: SidebarViewHeaderProps) {
   const { t } = useTranslation()
   const { setOpenMobile } = useSidebar()
+  const parent = props.view.parent
+
+  if (!parent) {
+    return null
+  }
 
   return (
     <SidebarHeader className='border-sidebar-border border-b px-2 py-2'>
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton
-            tooltip={t(props.view.parent.label)}
+            tooltip={t(parent.label)}
             className={cn(
               'text-muted-foreground hover:text-foreground',
               'gap-1.5 font-medium'
             )}
             render={
-              <Link
-                to={props.view.parent.to}
-                onClick={() => setOpenMobile(false)}
-              />
+              <Link to={parent.to} onClick={() => setOpenMobile(false)} />
             }
           >
             <ChevronLeft className='size-4 shrink-0' />
-            <span className='truncate'>{t(props.view.parent.label)}</span>
+            <span className='truncate'>{t(parent.label)}</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

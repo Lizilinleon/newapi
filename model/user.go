@@ -170,9 +170,9 @@ func CheckUserExistOrDeleted(username string, email string) (bool, error) {
 	// check email if empty
 	var err error
 	if email == "" {
-		err = DB.Unscoped().First(&user, "username = ?", username).Error
+		err = DB.Unscoped().First(&user, "LOWER(username) = LOWER(?)", username).Error
 	} else {
-		err = DB.Unscoped().First(&user, "username = ? or email = ?", username, email).Error
+		err = DB.Unscoped().First(&user, "LOWER(username) = LOWER(?) or LOWER(email) = LOWER(?)", username, email).Error
 	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -601,7 +601,7 @@ func (user *User) ValidateAndFill() (err error) {
 		return ErrUserEmptyCredentials
 	}
 	// find by username or email
-	err = DB.Where("username = ? OR email = ?", username, username).First(user).Error
+	err = DB.Where("username = ? OR LOWER(email) = LOWER(?)", username, username).First(user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrInvalidCredentials

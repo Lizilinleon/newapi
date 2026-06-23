@@ -25,6 +25,10 @@ import {
   saveParameterEnabled,
   loadMessages,
   saveMessages,
+  loadApiKey,
+  saveApiKey,
+  loadApiBaseUrl,
+  saveApiBaseUrl,
 } from '../lib'
 import type {
   Message,
@@ -57,6 +61,8 @@ export function usePlaygroundState() {
 
   const [models, setModels] = useState<ModelOption[]>([])
   const [groups, setGroups] = useState<GroupOption[]>([])
+  const [apiKey, setApiKey] = useState(() => loadApiKey())
+  const [apiBaseUrl, setApiBaseUrl] = useState(() => loadApiBaseUrl())
 
   // Update config with automatic save
   const updateConfig = useCallback(
@@ -100,6 +106,24 @@ export function usePlaygroundState() {
     updateMessages([])
   }, [updateMessages])
 
+  const updateApiKey = useCallback((value: string) => {
+    const trimmed = value.trim()
+    setApiKey(trimmed)
+    saveApiKey(trimmed)
+  }, [])
+
+  const updateApiConnection = useCallback(
+    (nextApiKey: string, nextApiBaseUrl: string) => {
+      const trimmedApiKey = nextApiKey.trim()
+      const trimmedApiBaseUrl = nextApiBaseUrl.trim()
+      setApiKey(trimmedApiKey)
+      setApiBaseUrl(trimmedApiBaseUrl)
+      saveApiKey(trimmedApiKey)
+      saveApiBaseUrl(trimmedApiBaseUrl)
+    },
+    []
+  )
+
   // Reset config to defaults
   const resetConfig = useCallback(() => {
     setConfig(DEFAULT_CONFIG)
@@ -115,6 +139,8 @@ export function usePlaygroundState() {
     messages,
     models,
     groups,
+    apiKey,
+    apiBaseUrl,
 
     // Setters
     setModels,
@@ -124,6 +150,8 @@ export function usePlaygroundState() {
     updateConfig,
     updateParameterEnabled,
     updateMessages,
+    updateApiKey,
+    updateApiConnection,
     clearMessages,
     resetConfig,
   }

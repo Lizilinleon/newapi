@@ -16,8 +16,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useState } from 'react'
+import { CircleDollarSign } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 import { SectionPageLayout } from '@/components/layout'
+import { UserFundsDialog } from './components/user-funds-dialog'
 import { UsersDeleteDialog } from './components/users-delete-dialog'
 import { UsersMutateDrawer } from './components/users-mutate-drawer'
 import { UsersPrimaryButtons } from './components/users-primary-buttons'
@@ -27,12 +31,21 @@ import { UsersTable } from './components/users-table'
 function UsersContent() {
   const { t } = useTranslation()
   const { open, setOpen, currentRow } = useUsers()
+  const [fundsOpen, setFundsOpen] = useState(false)
 
   return (
     <>
       <SectionPageLayout>
         <SectionPageLayout.Title>{t('Users')}</SectionPageLayout.Title>
         <SectionPageLayout.Actions>
+          <Button
+            size='sm'
+            variant='outline'
+            onClick={() => setFundsOpen(true)}
+          >
+            <CircleDollarSign className='h-4 w-4' />
+            {t('Manage user funds')}
+          </Button>
           <UsersPrimaryButtons />
         </SectionPageLayout.Actions>
         <SectionPageLayout.Content>
@@ -45,6 +58,7 @@ function UsersContent() {
         onOpenChange={(isOpen) => !isOpen && setOpen(null)}
         currentRow={open === 'update' ? currentRow || undefined : undefined}
       />
+      <UserFundsDialog open={fundsOpen} onOpenChange={setFundsOpen} />
       <UsersDeleteDialog />
     </>
   )

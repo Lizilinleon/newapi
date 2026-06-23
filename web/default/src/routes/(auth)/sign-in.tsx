@@ -17,7 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { z } from 'zod'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import { SignIn } from '@/features/auth/sign-in'
 
 const searchSchema = z.object({
   redirect: z.string().optional(),
@@ -25,7 +26,5 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/(auth)/sign-in')({
   validateSearch: searchSchema,
-  beforeLoad: ({ search }) => {
-    throw redirect({ to: search?.redirect || '/enterprise' })
-  },
+  component: SignIn,
 })

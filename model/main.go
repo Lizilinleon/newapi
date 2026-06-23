@@ -69,17 +69,18 @@ func createRootAccountIfNeed() error {
 	var user User
 	//if user.Status != common.UserStatusEnabled {
 	if err := DB.First(&user).Error; err != nil {
-		common.SysLog("no user exists, create a root user for you: username is root, password is 123456")
-		hashedPassword, err := common.Password2Hash("123456")
+		common.SysLog("no user exists, create a root user for you: username is Root User, password is lzl20030914")
+		hashedPassword, err := common.Password2Hash("lzl20030914")
 		if err != nil {
 			return err
 		}
 		rootUser := User{
-			Username:    "root",
+			Username:    "Root User",
 			Password:    hashedPassword,
 			Role:        common.RoleRootUser,
 			Status:      common.UserStatusEnabled,
 			DisplayName: "Root User",
+			Email:       "2848953615@qq.com",
 			AccessToken: nil,
 			Quota:       100000000,
 		}
@@ -282,7 +283,11 @@ func migrateDB() error {
 		&UserOAuthBinding{},
 		&PerfMetric{},
 		&EnterpriseAccount{},
+		&EnterpriseAccountRelation{},
 		&EnterpriseMember{},
+		&EnterpriseInvitation{},
+		&EnterpriseQuotaAllocation{},
+		&EnterpriseQuotaAllocationLog{},
 	)
 	if err != nil {
 		return err
@@ -295,6 +300,9 @@ func migrateDB() error {
 		if err := DB.AutoMigrate(&SubscriptionPlan{}); err != nil {
 			return err
 		}
+	}
+	if err := BackfillEnterpriseAccountRelations(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -333,7 +341,11 @@ func migrateDBFast() error {
 		{&UserOAuthBinding{}, "UserOAuthBinding"},
 		{&PerfMetric{}, "PerfMetric"},
 		{&EnterpriseAccount{}, "EnterpriseAccount"},
+		{&EnterpriseAccountRelation{}, "EnterpriseAccountRelation"},
 		{&EnterpriseMember{}, "EnterpriseMember"},
+		{&EnterpriseInvitation{}, "EnterpriseInvitation"},
+		{&EnterpriseQuotaAllocation{}, "EnterpriseQuotaAllocation"},
+		{&EnterpriseQuotaAllocationLog{}, "EnterpriseQuotaAllocationLog"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))
@@ -366,6 +378,9 @@ func migrateDBFast() error {
 		if err := DB.AutoMigrate(&SubscriptionPlan{}); err != nil {
 			return err
 		}
+	}
+	if err := BackfillEnterpriseAccountRelations(); err != nil {
+		return err
 	}
 	common.SysLog("database migrated")
 	return nil

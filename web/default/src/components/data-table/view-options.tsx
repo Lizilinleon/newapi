@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { type Table } from '@tanstack/react-table'
+import { Columns3 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,7 +25,9 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
@@ -36,29 +39,40 @@ export function DataTableViewOptions<TData>({
   table,
 }: DataTableViewOptionsProps<TData>) {
   const { t } = useTranslation()
+  const columns = table
+    .getAllLeafColumns()
+    .filter((column) => column.getCanHide())
+  const visibleCount = columns.filter((column) => column.getIsVisible()).length
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         render={
           <Button
             variant='outline'
-            className='shrink-0'
-            aria-label={t('View')}
+            className='shrink-0 gap-1.5'
+            aria-label={t('Display columns')}
           />
         }
       >
-        {t('View')}
+        <Columns3 data-icon='inline-start' />
+        {t('Display columns')}
+        {columns.length > 0 && (
+          <span className='text-muted-foreground font-normal'>
+            {visibleCount}/{columns.length}
+          </span>
+        )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align='end' className='w-[150px]'>
+      <DropdownMenuContent align='end' className='w-56'>
         <DropdownMenuGroup>
-          <DropdownMenuLabel>{t('Toggle columns')}</DropdownMenuLabel>
-          {table
-            .getAllColumns()
-            .filter(
-              (column) =>
-                typeof column.accessorFn !== 'undefined' && column.getCanHide()
-            )
-            .map((column) => {
+          <DropdownMenuLabel className='flex items-center justify-between gap-2'>
+            <span>{t('Toggle columns')}</span>
+            <span className='text-muted-foreground font-normal'>
+              {visibleCount}/{columns.length}
+            </span>
+          </DropdownMenuLabel>
+          {columns.length > 0 ? (
+            columns.map((column) => {
               return (
                 <DropdownMenuCheckboxItem
                   key={column.id}
@@ -69,8 +83,21 @@ export function DataTableViewOptions<TData>({
                   {column.columnDef.meta?.label ?? column.id}
                 </DropdownMenuCheckboxItem>
               )
-            })}
+            })
+          ) : (
+            <DropdownMenuItem disabled>
+              {t('No columns can be hidden')}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
+        {columns.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => table.resetColumnVisibility()}>
+              {t('Reset')}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

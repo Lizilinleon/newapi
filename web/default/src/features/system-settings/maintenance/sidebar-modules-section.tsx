@@ -142,6 +142,14 @@ export function SidebarModulesSection({
         title: t('Users'),
         description: t('Administer user accounts and roles.'),
       },
+      enterpriseAdmin: {
+        title: t('Enterprises'),
+        description: t('View enterprise details and account relationships.'),
+      },
+      log: {
+        title: t('Admin Logs'),
+        description: t('Review cross-user usage and task logs.'),
+      },
       setting: {
         title: t('System settings'),
         description: t('Advanced platform configuration.'),

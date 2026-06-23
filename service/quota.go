@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"html"
 	"math"
 	"strings"
 	"time"
@@ -420,11 +421,19 @@ func PostConsumeQuota(relayInfo *relaycommon.RelayInfo, quota int, preConsumedQu
 		}
 	} else {
 		// Wallet
-		billingId := billingUserId(relayInfo)
-		if quota > 0 {
-			err = model.DecreaseUserQuota(billingId, quota, false)
+		if relayInfo != nil && relayInfo.EnterpriseId > 0 {
+			if quota > 0 {
+				err = model.DecreaseEnterpriseMemberRemainQuota(relayInfo.UserId, relayInfo.EnterpriseId, quota)
+			} else {
+				err = model.IncreaseEnterpriseMemberRemainQuota(relayInfo.UserId, relayInfo.EnterpriseId, -quota)
+			}
 		} else {
-			err = model.IncreaseUserQuota(billingId, -quota, false)
+			billingId := billingUserId(relayInfo)
+			if quota > 0 {
+				err = model.DecreaseUserQuota(billingId, quota, false)
+			} else {
+				err = model.IncreaseUserQuota(billingId, -quota, false)
+			}
 		}
 		if err != nil {
 			return err
@@ -445,6 +454,7 @@ func PostConsumeQuota(relayInfo *relaycommon.RelayInfo, quota int, preConsumedQu
 	if sendEmail {
 		if (quota + preConsumedQuota) != 0 {
 			checkAndSendQuotaNotify(relayInfo, quota, preConsumedQuota)
+			checkAndSendEnterpriseBalanceNotify(relayInfo, quota+preConsumedQuota)
 		}
 	}
 
@@ -452,10 +462,14 @@ func PostConsumeQuota(relayInfo *relaycommon.RelayInfo, quota int, preConsumedQu
 }
 
 func checkAndSendQuotaNotify(relayInfo *relaycommon.RelayInfo, quota int, preConsumedQuota int) {
+	if relayInfo == nil || !common.UserQuotaNotifyEnabled {
+		return
+	}
 	gopool.Go(func() {
 		userSetting := relayInfo.UserSetting
-		if billingUserId(relayInfo) != relayInfo.UserId {
-			if ownerSetting, err := model.GetUserSetting(billingUserId(relayInfo), false); err == nil {
+		notifyUserId := billingUserId(relayInfo)
+		if notifyUserId != relayInfo.UserId {
+			if ownerSetting, err := model.GetUserSetting(notifyUserId, false); err == nil {
 				userSetting = ownerSetting
 			}
 		}
@@ -463,43 +477,92 @@ func checkAndSendQuotaNotify(relayInfo *relaycommon.RelayInfo, quota int, preCon
 		if userSetting.QuotaWarningThreshold != 0 {
 			threshold = int(userSetting.QuotaWarningThreshold)
 		}
-
-		//noMoreQuota := userCache.Quota-(quota+preConsumedQuota) <= 0
-		quotaTooLow := false
-		consumeQuota := quota + preConsumedQuota
-		if relayInfo.BillingUserQuota-consumeQuota < threshold {
-			quotaTooLow = true
+		if threshold <= 0 {
+			return
 		}
-		if quotaTooLow {
-			prompt := "您的额度即将用尽"
-			topUpLink := PaymentReturnURL("/console/topup")
 
-			// 根据通知方式生成不同的内容格式
-			var content string
-			var values []interface{}
+		consumeQuota := quota + preConsumedQuota
+		remainingQuota := relayInfo.BillingUserQuota - consumeQuota
+		if remainingQuota >= threshold {
+			return
+		}
 
-			notifyType := userSetting.NotifyType
-			if notifyType == "" {
-				notifyType = dto.NotifyTypeEmail
-			}
+		prompt := "Your quota is running low"
+		if relayInfo.EnterpriseId > 0 {
+			prompt = "Your enterprise allocated quota is running low"
+		}
+		topUpLink := PaymentReturnURL("/console/topup")
 
-			if notifyType == dto.NotifyTypeBark {
-				// Bark推送使用简短文本，不支持HTML
-				content = "{{value}}，剩余额度：{{value}}，请及时充值"
-				values = []interface{}{prompt, logger.FormatQuota(relayInfo.BillingUserQuota)}
-			} else if notifyType == dto.NotifyTypeGotify {
-				content = "{{value}}，当前剩余额度为 {{value}}，请及时充值。"
-				values = []interface{}{prompt, logger.FormatQuota(relayInfo.BillingUserQuota)}
-			} else {
-				// 默认内容格式，适用于Email和Webhook（支持HTML）
-				content = "{{value}}，当前剩余额度为 {{value}}，为了不影响您的使用，请及时充值。<br/>充值链接：<a href='{{value}}'>{{value}}</a>"
-				values = []interface{}{prompt, logger.FormatQuota(relayInfo.BillingUserQuota), topUpLink, topUpLink}
-			}
+		var content string
+		var values []interface{}
+		notifyType := userSetting.NotifyType
+		if notifyType == "" {
+			notifyType = dto.NotifyTypeEmail
+		}
 
-			err := NotifyUser(billingUserId(relayInfo), billingUserEmail(relayInfo), relayInfo.UserSetting, dto.NewNotify(dto.NotifyTypeQuotaExceed, prompt, content, values))
-			if err != nil {
-				common.SysError(fmt.Sprintf("failed to send quota notify to user %d: %s", billingUserId(relayInfo), err.Error()))
-			}
+		remainingText := logger.FormatQuota(remainingQuota)
+		thresholdText := logger.FormatQuota(threshold)
+		if notifyType == dto.NotifyTypeBark || notifyType == dto.NotifyTypeGotify {
+			content = "{{value}}, remaining quota: {{value}}, warning threshold: {{value}}. Please top up or request a new allocation."
+			values = []interface{}{prompt, remainingText, thresholdText}
+		} else {
+			content = "{{value}}.<br/>Remaining quota: <strong>{{value}}</strong><br/>Warning threshold: <strong>{{value}}</strong><br/>Please top up or request a new enterprise allocation in time.<br/>Top-up link: <a href='{{value}}'>{{value}}</a>"
+			values = []interface{}{prompt, remainingText, thresholdText, topUpLink, topUpLink}
+		}
+
+		err := NotifyUser(notifyUserId, billingUserEmail(relayInfo), userSetting, dto.NewNotify(dto.NotifyTypeQuotaExceed, prompt, content, values))
+		if err != nil {
+			common.SysError(fmt.Sprintf("failed to send quota notify to user %d: %s", notifyUserId, err.Error()))
+		}
+	})
+}
+
+func CheckAndSendEnterpriseBalanceNotify(enterpriseId int, ownerQuotaOverride *int) {
+	checkAndSendEnterpriseBalanceNotifyByState(enterpriseId, ownerQuotaOverride)
+}
+
+func checkAndSendEnterpriseBalanceNotify(relayInfo *relaycommon.RelayInfo, actualQuota int) {
+	if relayInfo == nil || relayInfo.EnterpriseId == 0 || actualQuota == 0 {
+		return
+	}
+	ownerQuotaAfter := relayInfo.BillingUserQuota - actualQuota
+	checkAndSendEnterpriseBalanceNotifyByState(relayInfo.EnterpriseId, &ownerQuotaAfter)
+}
+
+func checkAndSendEnterpriseBalanceNotifyByState(enterpriseId int, ownerQuotaOverride *int) {
+	gopool.Go(func() {
+		state, err := model.GetEnterpriseBalanceAlertState(enterpriseId, ownerQuotaOverride)
+		if err != nil {
+			common.SysError(fmt.Sprintf("failed to load enterprise balance alert state: %s", err.Error()))
+			return
+		}
+		if !state.EmailEnabled || !state.IsLow || state.CreatedByUserId == 0 || state.CreatedByEmail == "" {
+			return
+		}
+		canSend, err := CheckNotificationLimit(state.CreatedByUserId, dto.NotifyTypeEnterpriseBalanceLow)
+		if err != nil {
+			common.SysError(fmt.Sprintf("failed to check enterprise balance notify limit: %s", err.Error()))
+			return
+		}
+		if !canSend {
+			return
+		}
+		enterpriseName := strings.TrimSpace(state.EnterpriseName)
+		if enterpriseName == "" {
+			enterpriseName = fmt.Sprintf("Enterprise #%d", state.EnterpriseId)
+		}
+		subject := fmt.Sprintf("%s enterprise balance alert", common.SystemName)
+		content := fmt.Sprintf(
+			"<p>The enterprise <strong>%s</strong> balance is below the configured warning threshold.</p>"+
+				"<p>Current remaining ratio: <strong>%.2f%%</strong><br/>Warning threshold: <strong>%d%%</strong><br/>Main account balance: <strong>%s</strong><br/>Enterprise total pool: <strong>%s</strong></p>",
+			html.EscapeString(enterpriseName),
+			state.RemainingPercent,
+			state.ThresholdPercent,
+			html.EscapeString(logger.FormatQuota(state.OwnerQuota)),
+			html.EscapeString(logger.FormatQuota(state.TotalQuota)),
+		)
+		if err := common.SendEmail(subject, state.CreatedByEmail, content); err != nil {
+			common.SysError(fmt.Sprintf("failed to send enterprise balance notify to user %d: %s", state.CreatedByUserId, err.Error()))
 		}
 	})
 }

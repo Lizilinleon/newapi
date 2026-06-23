@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"strconv"
 	"strings"
@@ -30,21 +31,17 @@ type LoginRequest struct {
 }
 
 func Login(c *gin.Context) {
-	if tryRespondWithDevRootLogin(c) {
-		return
-	}
-
 	if !common.PasswordLoginEnabled {
 		common.ApiErrorI18n(c, i18n.MsgUserPasswordLoginDisabled)
 		return
 	}
 	var loginRequest LoginRequest
-	err := json.NewDecoder(c.Request.Body).Decode(&loginRequest)
+	err := common.DecodeJson(c.Request.Body, &loginRequest)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
-	username := loginRequest.Username
+	username := strings.TrimSpace(loginRequest.Username)
 	password := loginRequest.Password
 	if username == "" || password == "" {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
@@ -115,8 +112,20 @@ func setupLogin(user *model.User, c *gin.Context) {
 	})
 }
 
+func clearBrowserSession(c *gin.Context) error {
+	session := sessions.Default(c)
+	session.Clear()
+	session.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+	return session.Save()
+}
+
 func Logout(c *gin.Context) {
-	if keepDevRootSession(c) {
+	if err := clearBrowserSession(c); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgUserSessionSaveFailed)
 		return
 	}
 
@@ -127,10 +136,6 @@ func Logout(c *gin.Context) {
 }
 
 func Register(c *gin.Context) {
-	if tryRespondWithDevRootLogin(c) {
-		return
-	}
-
 	if !common.RegisterEnabled {
 		common.ApiErrorI18n(c, i18n.MsgUserRegisterDisabled)
 		return
@@ -140,24 +145,24 @@ func Register(c *gin.Context) {
 		return
 	}
 	var user model.User
-	err := json.NewDecoder(c.Request.Body).Decode(&user)
+	err := common.DecodeJson(c.Request.Body, &user)
 	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	user.Username = strings.TrimSpace(user.Username)
+	user.Email = strings.ToLower(strings.TrimSpace(user.Email))
+	if user.Username == "" || user.Email == "" || user.Password == "" {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	if _, err := mail.ParseAddress(user.Email); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
 	if err := common.Validate.Struct(&user); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
-	}
-	if common.EmailVerificationEnabled {
-		if user.Email == "" || user.VerificationCode == "" {
-			common.ApiErrorI18n(c, i18n.MsgUserEmailVerificationRequired)
-			return
-		}
-		if !common.VerifyCodeWithKey(user.Email, user.VerificationCode, common.EmailVerificationPurpose) {
-			common.ApiErrorI18n(c, i18n.MsgUserVerificationCodeError)
-			return
-		}
 	}
 	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
 	if err != nil {
@@ -169,24 +174,34 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserExists)
 		return
 	}
+	if common.EmailVerificationEnabled {
+		if user.VerificationCode == "" {
+			common.ApiError(c, errors.New("email verification code is required"))
+			return
+		}
+		if !common.VerifyCodeWithKey(user.Email, user.VerificationCode, common.EmailVerificationPurpose) {
+			common.ApiError(c, errors.New("invalid email verification code"))
+			return
+		}
+	}
 	affCode := user.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{
 		Username:    user.Username,
 		Password:    user.Password,
 		DisplayName: user.Username,
+		Email:       user.Email,
 		InviterId:   inviterId,
-		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
-	}
-	if common.EmailVerificationEnabled {
-		cleanUser.Email = user.Email
+		Role:        common.RoleCommonUser,
 	}
 	if err := cleanUser.Insert(inviterId); err != nil {
 		common.ApiError(c, err)
 		return
 	}
+	if common.EmailVerificationEnabled {
+		common.DeleteKey(user.Email, common.EmailVerificationPurpose)
+	}
 
-	// 获取插入后的用户ID
 	var insertedUser model.User
 	if err := model.DB.Where("username = ?", cleanUser.Username).First(&insertedUser).Error; err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserRegisterFailed)
@@ -219,6 +234,11 @@ func Register(c *gin.Context) {
 			common.ApiErrorI18n(c, i18n.MsgCreateDefaultTokenErr)
 			return
 		}
+	}
+
+	if err := clearBrowserSession(c); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgUserSessionSaveFailed)
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{

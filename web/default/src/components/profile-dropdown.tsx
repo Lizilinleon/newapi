@@ -109,6 +109,18 @@ export function ProfileDropdown() {
             {t('Wallet')}
           </DropdownMenuItem>
 
+          <DropdownMenuItem
+            onClick={() =>
+              navigate({
+                to: '/settings/$section',
+                params: { section: 'account-bindings' },
+              })
+            }
+          >
+            <Settings className='size-4' />
+            {t('Settings')}
+          </DropdownMenuItem>
+
           {isSuperAdmin && (
             <DropdownMenuItem
               onClick={() =>

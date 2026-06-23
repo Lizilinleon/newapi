@@ -56,6 +56,7 @@ const monitoringSchema = z
   .object({
     ChannelDisableThreshold: numericString,
     QuotaRemindThreshold: numericString,
+    UserQuotaNotifyEnabled: z.boolean(),
     AutomaticDisableChannelEnabled: z.boolean(),
     AutomaticEnableChannelEnabled: z.boolean(),
     AutomaticDisableKeywords: z.string(),
@@ -67,6 +68,10 @@ const monitoringSchema = z
         .number()
         .int()
         .min(1, 'Interval must be at least 1 minute'),
+    }),
+    enterprise_setting: z.object({
+      balance_email_notify_enabled: z.boolean(),
+      balance_warning_percent: z.coerce.number().int().min(1).max(100),
     }),
   })
   .superRefine((values, ctx) => {
@@ -104,6 +109,7 @@ type MonitoringSettingsSectionProps = {
   defaultValues: {
     ChannelDisableThreshold: string
     QuotaRemindThreshold: string
+    UserQuotaNotifyEnabled: boolean
     AutomaticDisableChannelEnabled: boolean
     AutomaticEnableChannelEnabled: boolean
     AutomaticDisableKeywords: string
@@ -111,6 +117,8 @@ type MonitoringSettingsSectionProps = {
     AutomaticRetryStatusCodes: string
     'monitor_setting.auto_test_channel_enabled': boolean
     'monitor_setting.auto_test_channel_minutes': number
+    'enterprise_setting.balance_email_notify_enabled': boolean
+    'enterprise_setting.balance_warning_percent': number
   }
 }
 
@@ -121,6 +129,7 @@ function normalizeLineEndings(value: string) {
 type NormalizedMonitoringValues = {
   ChannelDisableThreshold: string
   QuotaRemindThreshold: string
+  UserQuotaNotifyEnabled: boolean
   AutomaticDisableChannelEnabled: boolean
   AutomaticEnableChannelEnabled: boolean
   AutomaticDisableKeywords: string
@@ -128,6 +137,8 @@ type NormalizedMonitoringValues = {
   AutomaticRetryStatusCodes: string
   'monitor_setting.auto_test_channel_enabled': boolean
   'monitor_setting.auto_test_channel_minutes': number
+  'enterprise_setting.balance_email_notify_enabled': boolean
+  'enterprise_setting.balance_warning_percent': number
 }
 
 const buildFormDefaults = (
@@ -135,6 +146,7 @@ const buildFormDefaults = (
 ): MonitoringFormInput => ({
   ChannelDisableThreshold: defaults.ChannelDisableThreshold ?? '',
   QuotaRemindThreshold: defaults.QuotaRemindThreshold ?? '',
+  UserQuotaNotifyEnabled: defaults.UserQuotaNotifyEnabled,
   AutomaticDisableChannelEnabled: defaults.AutomaticDisableChannelEnabled,
   AutomaticEnableChannelEnabled: defaults.AutomaticEnableChannelEnabled,
   AutomaticDisableKeywords: normalizeLineEndings(
@@ -148,6 +160,12 @@ const buildFormDefaults = (
     auto_test_channel_minutes:
       defaults['monitor_setting.auto_test_channel_minutes'],
   },
+  enterprise_setting: {
+    balance_email_notify_enabled:
+      defaults['enterprise_setting.balance_email_notify_enabled'],
+    balance_warning_percent:
+      defaults['enterprise_setting.balance_warning_percent'],
+  },
 })
 
 const normalizeDefaults = (
@@ -155,6 +173,7 @@ const normalizeDefaults = (
 ): NormalizedMonitoringValues => ({
   ChannelDisableThreshold: (defaults.ChannelDisableThreshold ?? '').trim(),
   QuotaRemindThreshold: (defaults.QuotaRemindThreshold ?? '').trim(),
+  UserQuotaNotifyEnabled: defaults.UserQuotaNotifyEnabled,
   AutomaticDisableChannelEnabled: defaults.AutomaticDisableChannelEnabled,
   AutomaticEnableChannelEnabled: defaults.AutomaticEnableChannelEnabled,
   AutomaticDisableKeywords: normalizeLineEndings(
@@ -170,6 +189,10 @@ const normalizeDefaults = (
     defaults['monitor_setting.auto_test_channel_enabled'],
   'monitor_setting.auto_test_channel_minutes':
     defaults['monitor_setting.auto_test_channel_minutes'],
+  'enterprise_setting.balance_email_notify_enabled':
+    defaults['enterprise_setting.balance_email_notify_enabled'],
+  'enterprise_setting.balance_warning_percent':
+    defaults['enterprise_setting.balance_warning_percent'],
 })
 
 const normalizeFormValues = (
@@ -177,6 +200,7 @@ const normalizeFormValues = (
 ): NormalizedMonitoringValues => ({
   ChannelDisableThreshold: values.ChannelDisableThreshold.trim(),
   QuotaRemindThreshold: values.QuotaRemindThreshold.trim(),
+  UserQuotaNotifyEnabled: values.UserQuotaNotifyEnabled,
   AutomaticDisableChannelEnabled: values.AutomaticDisableChannelEnabled,
   AutomaticEnableChannelEnabled: values.AutomaticEnableChannelEnabled,
   AutomaticDisableKeywords: normalizeLineEndings(
@@ -192,6 +216,10 @@ const normalizeFormValues = (
     values.monitor_setting.auto_test_channel_enabled,
   'monitor_setting.auto_test_channel_minutes':
     values.monitor_setting.auto_test_channel_minutes,
+  'enterprise_setting.balance_email_notify_enabled':
+    values.enterprise_setting.balance_email_notify_enabled,
+  'enterprise_setting.balance_warning_percent':
+    values.enterprise_setting.balance_warning_percent,
 })
 
 export function MonitoringSettingsSection({
@@ -305,6 +333,29 @@ export function MonitoringSettingsSection({
           <div className='grid gap-6 md:grid-cols-2'>
             <FormField
               control={form.control}
+              name='UserQuotaNotifyEnabled'
+              render={({ field }) => (
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>{t('User quota alerts')}</FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Notify users when their remaining quota drops below the configured threshold, including personal and enterprise-billed API keys.'
+                      )}
+                    </FormDescription>
+                  </SettingsSwitchContent>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </SettingsSwitchItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name='ChannelDisableThreshold'
               render={({ field }) => (
                 <FormItem>
@@ -344,7 +395,34 @@ export function MonitoringSettingsSection({
                     />
                   </FormControl>
                   <FormDescription>
-                    {t('Send email alerts when a user falls below this quota')}
+                    {t(
+                      'Trigger user quota alerts when the remaining personal or enterprise allocation balance is below this value.'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='enterprise_setting.balance_warning_percent'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Enterprise balance warning (%)')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={1}
+                      max={100}
+                      step={1}
+                      {...safeNumberFieldProps(field)}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Enterprise balance turns red when the main account balance falls below this percentage of the enterprise fund pool.'
+                    )}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -353,6 +431,31 @@ export function MonitoringSettingsSection({
           </div>
 
           <div className='grid gap-6 md:grid-cols-2'>
+            <FormField
+              control={form.control}
+              name='enterprise_setting.balance_email_notify_enabled'
+              render={({ field }) => (
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>
+                      {t('Enterprise balance email alerts')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Send an email to the enterprise creator when the enterprise balance is below the warning percentage.'
+                      )}
+                    </FormDescription>
+                  </SettingsSwitchContent>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </SettingsSwitchItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name='AutomaticDisableChannelEnabled'

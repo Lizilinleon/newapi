@@ -16,10 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useRef } from 'react'
 import * as z from 'zod'
 import type { Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { ImagePlus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -51,13 +54,33 @@ import { SettingsSection } from '../components/settings-section'
 import { useSettingsForm } from '../hooks/use-settings-form'
 import { useUpdateOption } from '../hooks/use-update-option'
 
+const LOGO_UPLOAD_MAX_SIZE = 512 * 1024
+const LOGO_UPLOAD_MAX_DIMENSION = 512
+const LOGO_UPLOAD_ACCEPT =
+  'image/png,image/jpeg,image/webp,image/svg+xml,image/gif'
+
+function isValidLogoValue(value: string): boolean {
+  if (!value) return true
+  if (value.startsWith('data:image/')) return true
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+const logoSchema = z.string().refine(isValidLogoValue, {
+  message: 'Please upload an image or provide a valid logo URL',
+})
+
 const _systemInfoSchema = z.object({
   theme: z.object({
     frontend: z.enum(['default', 'classic']),
   }),
   SystemName: z.string().min(1),
   ServerAddress: z.string().optional(),
-  Logo: z.string().url().optional().or(z.literal('')),
+  Logo: logoSchema,
   Footer: z.string().optional(),
   About: z.string().optional(),
   HomePageContent: z.string().optional(),
@@ -78,9 +101,99 @@ function normalizeValue(value: unknown): string {
   return typeof value === 'string' ? value : String(value)
 }
 
+function dataUrlByteSize(dataUrl: string) {
+  const base64 = dataUrl.split(',')[1] ?? ''
+  return Math.ceil((base64.length * 3) / 4)
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      result ? resolve(result) : reject(new Error('empty result'))
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('read failed'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('image load failed'))
+    }
+    image.src = url
+  })
+}
+
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality?: number
+): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, quality))
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return readFileAsDataUrl(new File([blob], 'logo', { type: blob.type }))
+}
+
+async function compressLogoFile(file: File): Promise<string> {
+  if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+    return readFileAsDataUrl(file)
+  }
+
+  const image = await loadImageFromFile(file)
+  const sourceWidth = image.naturalWidth || image.width
+  const sourceHeight = image.naturalHeight || image.height
+  if (!sourceWidth || !sourceHeight) {
+    return readFileAsDataUrl(file)
+  }
+
+  const scale = Math.min(
+    1,
+    LOGO_UPLOAD_MAX_DIMENSION / sourceWidth,
+    LOGO_UPLOAD_MAX_DIMENSION / sourceHeight
+  )
+  const targetWidth = Math.max(1, Math.round(sourceWidth * scale))
+  const targetHeight = Math.max(1, Math.round(sourceHeight * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = targetWidth
+  canvas.height = targetHeight
+  const context = canvas.getContext('2d')
+  if (!context) return readFileAsDataUrl(file)
+
+  context.clearRect(0, 0, targetWidth, targetHeight)
+  context.drawImage(image, 0, 0, targetWidth, targetHeight)
+
+  const pngBlob = await canvasToBlob(canvas, 'image/png')
+  if (pngBlob && pngBlob.size <= LOGO_UPLOAD_MAX_SIZE) {
+    return blobToDataUrl(pngBlob)
+  }
+
+  for (const quality of [0.9, 0.8, 0.7, 0.6, 0.5]) {
+    const webpBlob = await canvasToBlob(canvas, 'image/webp', quality)
+    if (webpBlob && webpBlob.size <= LOGO_UPLOAD_MAX_SIZE) {
+      return blobToDataUrl(webpBlob)
+    }
+  }
+
+  return pngBlob ? blobToDataUrl(pngBlob) : readFileAsDataUrl(file)
+}
+
 export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
+  const logoInputRef = useRef<HTMLInputElement | null>(null)
 
   const normalizedDefaults: SystemInfoFormValues = {
     theme: {
@@ -107,7 +220,9 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
       error: () => t('System name is required'),
     }),
     ServerAddress: z.string().optional(),
-    Logo: z.string().url().optional().or(z.literal('')),
+    Logo: z.string().refine(isValidLogoValue, {
+      message: t('Please upload an image or provide a valid logo URL'),
+    }),
     Footer: z.string().optional(),
     About: z.string().optional(),
     HomePageContent: z.string().optional(),
@@ -138,6 +253,39 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
         }
       },
     })
+
+  const handleLogoFile = async (file: File | undefined) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      form.setError('Logo', {
+        type: 'manual',
+        message: t('Please upload an image file'),
+      })
+      return
+    }
+
+    try {
+      const result = await compressLogoFile(file)
+      if (dataUrlByteSize(result) > LOGO_UPLOAD_MAX_SIZE) {
+        form.setError('Logo', {
+          type: 'manual',
+          message: t('Logo image must be 512 KB or smaller'),
+        })
+        return
+      }
+      form.clearErrors('Logo')
+      form.setValue('Logo', result, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      })
+    } catch {
+      form.setError('Logo', {
+        type: 'manual',
+        message: t('Failed to read logo image'),
+      })
+    }
+  }
 
   return (
     <>
@@ -241,15 +389,72 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                 name='Logo'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('Logo URL')}</FormLabel>
+                    <FormLabel>{t('Logo image')}</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder={t('https://example.com/logo.png')}
-                        {...field}
-                      />
+                      <div className='flex flex-col gap-3 rounded-lg border p-3'>
+                        <div className='flex items-center gap-3'>
+                          <div className='bg-muted flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border'>
+                            {field.value ? (
+                              <img
+                                src={field.value}
+                                alt={t('Logo preview')}
+                                className='size-full object-contain'
+                              />
+                            ) : (
+                              <ImagePlus className='text-muted-foreground size-5' />
+                            )}
+                          </div>
+                          <div className='flex min-w-0 flex-1 flex-col gap-1'>
+                            <div className='font-medium'>
+                              {field.value
+                                ? t('Logo uploaded')
+                                : t('No logo uploaded')}
+                            </div>
+                            <div className='text-muted-foreground truncate text-sm'>
+                              {field.value ||
+                                t('Upload PNG, JPG, WebP, SVG, or GIF')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className='flex flex-wrap gap-2'>
+                          <Input
+                            ref={logoInputRef}
+                            type='file'
+                            accept={LOGO_UPLOAD_ACCEPT}
+                            className='hidden'
+                            onChange={(event) => {
+                              handleLogoFile(event.target.files?.[0])
+                              event.target.value = ''
+                            }}
+                          />
+                          <Button
+                            type='button'
+                            variant='outline'
+                            onClick={() => logoInputRef.current?.click()}
+                          >
+                            <ImagePlus data-icon='inline-start' />
+                            {t('Upload logo')}
+                          </Button>
+                          {field.value && (
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              onClick={() => {
+                                form.clearErrors('Logo')
+                                field.onChange('')
+                              }}
+                            >
+                              <X data-icon='inline-start' />
+                              {t('Clear logo')}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </FormControl>
                     <FormDescription>
-                      {t('URL to your logo image (optional)')}
+                      {t(
+                        'Upload a logo image to display across the application. The image is saved with this setting after you click Save Changes.'
+                      )}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

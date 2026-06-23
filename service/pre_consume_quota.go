@@ -33,6 +33,9 @@ func ReturnPreConsumedQuota(c *gin.Context, relayInfo *relaycommon.RelayInfo) {
 func PreConsumeQuota(c *gin.Context, preConsumedQuota int, relayInfo *relaycommon.RelayInfo) *types.NewAPIError {
 	billingId := billingUserId(relayInfo)
 	userQuota, err := model.GetUserQuota(billingId, false)
+	if relayInfo != nil && relayInfo.EnterpriseId > 0 {
+		userQuota, err = model.GetEnterpriseMemberRemainQuota(relayInfo.UserId, relayInfo.EnterpriseId)
+	}
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
 	}
@@ -70,7 +73,11 @@ func PreConsumeQuota(c *gin.Context, preConsumedQuota int, relayInfo *relaycommo
 		if err != nil {
 			return types.NewErrorWithStatusCode(err, types.ErrorCodePreConsumeTokenQuotaFailed, http.StatusForbidden, types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
 		}
-		err = model.DecreaseUserQuota(billingId, preConsumedQuota, false)
+		if relayInfo != nil && relayInfo.EnterpriseId > 0 {
+			err = model.DecreaseEnterpriseMemberRemainQuota(relayInfo.UserId, relayInfo.EnterpriseId, preConsumedQuota)
+		} else {
+			err = model.DecreaseUserQuota(billingId, preConsumedQuota, false)
+		}
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeUpdateDataError, types.ErrOptionWithSkipRetry())
 		}

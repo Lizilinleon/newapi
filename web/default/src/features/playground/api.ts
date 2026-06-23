@@ -25,33 +25,73 @@ import type {
   GroupOption,
 } from './types'
 
+function normalizeApiBaseUrl(apiBaseUrl?: string) {
+  const trimmed = apiBaseUrl?.trim() || API_ENDPOINTS.TOKEN_BASE_URL
+  return trimmed.replace(/\/+$/, '')
+}
+
+export function buildApiUrl(apiBaseUrl: string | undefined, path: string) {
+  return `${normalizeApiBaseUrl(apiBaseUrl)}/${path.replace(/^\/+/, '')}`
+}
+
 /**
  * Send chat completion request (non-streaming)
  */
 export async function sendChatCompletion(
-  payload: ChatCompletionRequest
+  payload: ChatCompletionRequest,
+  apiKey?: string,
+  apiBaseUrl?: string
 ): Promise<ChatCompletionResponse> {
-  const res = await api.post(API_ENDPOINTS.CHAT_COMPLETIONS, payload, {
-    skipErrorHandler: true,
-  } as Record<string, unknown>)
+  const trimmedApiKey = apiKey?.trim()
+  const res = await api.post(
+    trimmedApiKey
+      ? buildApiUrl(apiBaseUrl, '/chat/completions')
+      : API_ENDPOINTS.CHAT_COMPLETIONS,
+    payload,
+    {
+      headers: trimmedApiKey
+        ? { Authorization: `Bearer ${trimmedApiKey}` }
+        : undefined,
+      skipErrorHandler: true,
+    } as Record<string, unknown>
+  )
   return res.data
 }
 
 /**
  * Get user available models
  */
-export async function getUserModels(): Promise<ModelOption[]> {
-  const res = await api.get(API_ENDPOINTS.USER_MODELS)
+export async function getUserModels(
+  apiKey?: string,
+  apiBaseUrl?: string
+): Promise<ModelOption[]> {
+  const trimmedApiKey = apiKey?.trim()
+  const res = await api.get(
+    trimmedApiKey
+      ? buildApiUrl(apiBaseUrl, '/models')
+      : API_ENDPOINTS.USER_MODELS,
+    trimmedApiKey
+      ? {
+          headers: { Authorization: `Bearer ${trimmedApiKey}` },
+          skipErrorHandler: true,
+        }
+      : undefined
+  )
   const { data } = res
 
-  if (!data.success || !Array.isArray(data.data)) {
+  if (data.success === false || !Array.isArray(data.data)) {
     return []
   }
 
-  return data.data.map((model: string) => ({
-    label: model,
-    value: model,
-  }))
+  return data.data
+    .map((model: string | { id?: string }) => {
+      const modelId = typeof model === 'string' ? model : model.id || ''
+      return {
+        label: modelId,
+        value: modelId,
+      }
+    })
+    .filter((model: ModelOption) => model.value)
 }
 
 /**

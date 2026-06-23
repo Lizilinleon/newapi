@@ -28,6 +28,7 @@ type Token struct {
 	UsedQuota          int            `json:"used_quota" gorm:"default:0"` // used quota
 	Group              string         `json:"group" gorm:"default:''"`
 	CrossGroupRetry    bool           `json:"cross_group_retry"` // 跨分组重试，仅auto分组有效
+	EnterpriseId       int            `json:"enterprise_id" gorm:"default:0;index"`
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
 }
 
@@ -85,6 +86,13 @@ func GetAllUserTokens(userId int, startIdx int, num int) ([]*Token, error) {
 	return tokens, err
 }
 
+func GetPersonalUserTokens(userId int, startIdx int, num int) ([]*Token, error) {
+	var tokens []*Token
+	err := DB.Where("user_id = ? AND enterprise_id = ?", userId, 0).
+		Order("id desc").Limit(num).Offset(startIdx).Find(&tokens).Error
+	return tokens, err
+}
+
 // sanitizeLikePattern 校验并清洗用户输入的 LIKE 搜索模式。
 // 规则：
 //  1. 转义 ! 和 _（使用 ! 作为 ESCAPE 字符，兼容 MySQL/PostgreSQL/SQLite）
@@ -125,6 +133,14 @@ func sanitizeLikePattern(input string) (string, error) {
 const searchHardLimit = 100
 
 func SearchUserTokens(userId int, keyword string, token string, offset int, limit int) (tokens []*Token, total int64, err error) {
+	return searchUserTokens(userId, keyword, token, offset, limit, false)
+}
+
+func SearchPersonalUserTokens(userId int, keyword string, token string, offset int, limit int) (tokens []*Token, total int64, err error) {
+	return searchUserTokens(userId, keyword, token, offset, limit, true)
+}
+
+func searchUserTokens(userId int, keyword string, token string, offset int, limit int, personalOnly bool) (tokens []*Token, total int64, err error) {
 	// model 层强制截断
 	if limit <= 0 || limit > searchHardLimit {
 		limit = searchHardLimit
@@ -152,6 +168,9 @@ func SearchUserTokens(userId int, keyword string, token string, offset int, limi
 	}
 
 	baseQuery := DB.Model(&Token{}).Where("user_id = ?", userId)
+	if personalOnly {
+		baseQuery = baseQuery.Where("enterprise_id = ?", 0)
+	}
 
 	// 非空才加 LIKE 条件，空则跳过（不过滤该字段）
 	if keyword != "" {
@@ -295,7 +314,7 @@ func (token *Token) Update() (err error) {
 		}
 	}()
 	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
-		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry").Updates(token).Error
+		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "enterprise_id").Updates(token).Error
 	return err
 }
 
@@ -436,6 +455,12 @@ func decreaseTokenQuota(id int, quota int) (err error) {
 func CountUserTokens(userId int) (int64, error) {
 	var total int64
 	err := DB.Model(&Token{}).Where("user_id = ?", userId).Count(&total).Error
+	return total, err
+}
+
+func CountPersonalUserTokens(userId int) (int64, error) {
+	var total int64
+	err := DB.Model(&Token{}).Where("user_id = ? AND enterprise_id = ?", userId, 0).Count(&total).Error
 	return total, err
 }
 

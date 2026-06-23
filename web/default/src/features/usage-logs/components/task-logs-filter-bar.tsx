@@ -18,10 +18,9 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useState, useEffect, useCallback } from 'react'
 import { useQueryClient, useIsFetching } from '@tanstack/react-query'
-import { useNavigate, getRouteApi } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { type Table } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
-import { useIsAdmin } from '@/hooks/use-admin'
 import { buildSearchParams } from '../lib/filter'
 import { getDefaultTimeRange } from '../lib/utils'
 import type { DrawingLogFilters, LogCategory, TaskLogFilters } from '../types'
@@ -32,14 +31,13 @@ import {
   LogsFilterToolbar,
 } from './logs-filter-toolbar'
 
-const route = getRouteApi('/_authenticated/usage-logs/$section')
-
 type TaskLikeLogCategory = Extract<LogCategory, 'drawing' | 'task'>
 type TaskLogsFilters = DrawingLogFilters | TaskLogFilters
 
 interface TaskLogsFilterBarProps<TData> {
   table: Table<TData>
   logCategory: TaskLikeLogCategory
+  isAdminView: boolean
 }
 
 function getFilterValue(
@@ -67,8 +65,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const searchParams = route.useSearch()
-  const isAdmin = useIsAdmin()
+  const searchParams = useSearch({ strict: false }) as Record<string, unknown>
   const fetchingLogs = useIsFetching({ queryKey: ['logs'] })
 
   const [filters, setFilters] = useState<TaskLogsFilters>(() => {
@@ -80,10 +77,12 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
     const { start, end } = getDefaultTimeRange()
     const baseFilters = {
       startTime: searchParams.startTime
-        ? new Date(searchParams.startTime)
+        ? new Date(searchParams.startTime as number)
         : start,
-      endTime: searchParams.endTime ? new Date(searchParams.endTime) : end,
-      ...(searchParams.channel
+      endTime: searchParams.endTime
+        ? new Date(searchParams.endTime as number)
+        : end,
+      ...(props.isAdminView && searchParams.channel
         ? { channel: String(searchParams.channel) }
         : {}),
     }
@@ -101,6 +100,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
     setFilters(next)
   }, [
     props.logCategory,
+    props.isAdminView,
     searchParams.startTime,
     searchParams.endTime,
     searchParams.channel,
@@ -117,8 +117,6 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
   const handleApply = useCallback(() => {
     const filterParams = buildSearchParams(filters, props.logCategory)
     navigate({
-      to: '/usage-logs/$section',
-      params: { section: props.logCategory },
       search: {
         ...filterParams,
         page: 1,
@@ -133,8 +131,6 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
     setFilters(resetFilters)
 
     navigate({
-      to: '/usage-logs/$section',
-      params: { section: props.logCategory },
       search: {
         page: 1,
         startTime: start.getTime(),
@@ -163,7 +159,8 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
     props.logCategory === 'drawing'
       ? t('Filter by Midjourney task ID')
       : t('Filter by task ID')
-  const hasAdditionalFilters = !!filterValue || !!filters.channel
+  const hasAdditionalFilters =
+    !!filterValue || (props.isAdminView && !!filters.channel)
   const dateRangeFilter = (
     <LogsFilterField wide>
       <CompactDateTimeRangePicker
@@ -187,7 +184,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
       />
     </LogsFilterField>
   )
-  const channelFilter = isAdmin ? (
+  const channelFilter = props.isAdminView ? (
     <LogsFilterField>
       <LogsFilterInput
         placeholder={t('Channel ID')}
@@ -215,7 +212,10 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
           {channelFilter}
         </>
       }
-      mobileFilterCount={[filterValue, filters.channel].filter(Boolean).length}
+      mobileFilterCount={[
+        filterValue,
+        props.isAdminView ? filters.channel : undefined,
+      ].filter(Boolean).length}
       hasActiveFilters={hasAdditionalFilters}
       onSearch={handleApply}
       searchLoading={fetchingLogs > 0}

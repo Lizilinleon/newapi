@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getRouteApi } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   type ColumnDef,
   flexRender,
@@ -33,7 +33,6 @@ import { useMediaQuery } from '@/hooks'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useIsAdmin } from '@/hooks/use-admin'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { DataTablePage } from '@/components/data-table'
@@ -49,8 +48,6 @@ import { CommonLogsFilterBar } from './common-logs-filter-bar'
 import { TaskLogsFilterBar } from './task-logs-filter-bar'
 import { UsageLogsMobileList } from './usage-logs-mobile-card'
 
-const route = getRouteApi('/_authenticated/usage-logs/$section')
-
 const logTypeRowTint: Record<number, string> = {
   [LOG_TYPE_ENUM.ERROR]: 'bg-rose-50/40 dark:bg-rose-950/20',
   [LOG_TYPE_ENUM.REFUND]: 'bg-blue-50/30 dark:bg-blue-950/15',
@@ -63,13 +60,17 @@ function deserializeLogTypeFilter(value: unknown): unknown[] {
 
 interface UsageLogsTableProps {
   logCategory: LogCategory
+  isAdminView: boolean
 }
 
-export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
+export function UsageLogsTable({
+  logCategory,
+  isAdminView,
+}: UsageLogsTableProps) {
   const { t } = useTranslation()
-  const isAdmin = useIsAdmin()
   const isMobile = useMediaQuery('(max-width: 640px)')
-  const searchParams = route.useSearch()
+  const searchParams = useSearch({ strict: false }) as Record<string, unknown>
+  const navigate = useNavigate()
 
   const {
     columnFilters,
@@ -78,8 +79,8 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
     onPaginationChange,
     ensurePageInRange,
   } = useTableUrlState({
-    search: route.useSearch(),
-    navigate: route.useNavigate(),
+    search: searchParams,
+    navigate,
     pagination: { defaultPage: 1, defaultPageSize: isMobile ? 20 : 100 },
     globalFilter: { enabled: false },
     columnFilters: [
@@ -92,7 +93,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
       { columnId: 'model_name', searchKey: 'model', type: 'string' as const },
       { columnId: 'token_name', searchKey: 'token', type: 'string' as const },
       { columnId: 'group', searchKey: 'group', type: 'string' as const },
-      ...(isAdmin
+      ...(isAdminView
         ? [
             {
               columnId: 'channel',
@@ -113,7 +114,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
     queryKey: [
       'logs',
       logCategory,
-      isAdmin,
+      isAdminView,
       pagination.pageIndex + 1,
       pagination.pageSize,
       columnFilters,
@@ -123,7 +124,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
     queryFn: async () => {
       const result = await fetchLogsByCategory({
         logCategory,
-        isAdmin,
+        isAdmin: isAdminView,
         page: pagination.pageIndex + 1,
         pageSize: pagination.pageSize,
         searchParams,
@@ -146,7 +147,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   })
 
   const logs = data?.items || []
-  const columns = useColumnsByCategory(logCategory, isAdmin)
+  const columns = useColumnsByCategory(logCategory, isAdminView)
   const isLoadingData = isLoading || (isFetching && !data)
 
   const table = useReactTable({
@@ -201,9 +202,13 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
       }
       toolbar={
         isCommon ? (
-          <CommonLogsFilterBar table={table} />
+          <CommonLogsFilterBar table={table} isAdminView={isAdminView} />
         ) : (
-          <TaskLogsFilterBar table={table} logCategory={logCategory} />
+          <TaskLogsFilterBar
+            table={table}
+            logCategory={logCategory}
+            isAdminView={isAdminView}
+          />
         )
       }
       renderRow={(row) => {

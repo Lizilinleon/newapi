@@ -48,7 +48,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible={collapsible} variant={variant}>
-      {view && <SidebarViewHeader view={view} />}
+      {view?.parent && <SidebarViewHeader view={view} />}
 
       <SidebarContent className='py-2'>
         <AnimatePresence mode='wait' initial={false}>

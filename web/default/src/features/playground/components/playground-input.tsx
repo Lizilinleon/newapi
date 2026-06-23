@@ -24,6 +24,7 @@ import {
   ScreenShareIcon,
   CameraIcon,
   GlobeIcon,
+  KeyRoundIcon,
   SendIcon,
   SquareIcon,
   BarChartIcon,
@@ -34,6 +35,23 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +82,9 @@ interface PlaygroundInputProps {
   groups: GroupOption[]
   groupValue: string
   onGroupChange: (value: string) => void
+  apiKey: string
+  apiBaseUrl: string
+  onApiConnectionChange: (apiKey: string, apiBaseUrl: string) => void
 }
 
 const suggestions = [
@@ -73,6 +94,17 @@ const suggestions = [
   { icon: CodeSquareIcon, text: 'Code', color: '#6c71ff' },
   { icon: GraduationCapIcon, text: 'Get advice', color: '#76d0eb' },
   { icon: null, text: 'More' },
+]
+
+const officialBaseUrlExamples = [
+  { name: 'new-api', url: '/v1' },
+  { name: 'DeepSeek', url: 'https://api.deepseek.com' },
+  { name: 'OpenAI', url: 'https://api.openai.com/v1' },
+  { name: 'Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/openai' },
+  { name: 'OpenRouter', url: 'https://openrouter.ai/api/v1' },
+  { name: 'SiliconFlow', url: 'https://api.siliconflow.cn/v1' },
+  { name: 'xAI', url: 'https://api.x.ai/v1' },
+  { name: 'Mistral', url: 'https://api.mistral.ai/v1' },
 ]
 
 export function PlaygroundInput({
@@ -87,9 +119,15 @@ export function PlaygroundInput({
   groups,
   groupValue,
   onGroupChange,
+  apiKey,
+  apiBaseUrl,
+  onApiConnectionChange,
 }: PlaygroundInputProps) {
   const { t } = useTranslation()
   const [text, setText] = useState('')
+  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false)
+  const [draftApiKey, setDraftApiKey] = useState(apiKey)
+  const [draftApiBaseUrl, setDraftApiBaseUrl] = useState(apiBaseUrl || '/v1')
 
   const isModelSelectDisabled =
     disabled || isModelLoading || models.length === 0
@@ -109,6 +147,32 @@ export function PlaygroundInput({
 
   const handleSuggestionClick = (suggestion: string) => {
     onSubmit(suggestion)
+  }
+
+  const handleApiKeyDialogOpenChange = (open: boolean) => {
+    setApiKeyDialogOpen(open)
+    if (open) {
+      setDraftApiKey(apiKey)
+      setDraftApiBaseUrl(apiBaseUrl || '/v1')
+    }
+  }
+
+  const handleSaveApiKey = () => {
+    onApiConnectionChange(draftApiKey, draftApiBaseUrl)
+    setApiKeyDialogOpen(false)
+    toast.success(
+      draftApiKey.trim()
+        ? t('Playground API key saved')
+        : t('Playground API key cleared')
+    )
+  }
+
+  const handleClearApiKey = () => {
+    setDraftApiKey('')
+    setDraftApiBaseUrl('/v1')
+    onApiConnectionChange('', '')
+    setApiKeyDialogOpen(false)
+    toast.success(t('Playground API key cleared'))
   }
 
   return (
@@ -183,6 +247,111 @@ export function PlaygroundInput({
           </PromptInputTools>
 
           <div className='flex items-center gap-1.5 md:gap-2'>
+            <Dialog
+              open={apiKeyDialogOpen}
+              onOpenChange={handleApiKeyDialogOpenChange}
+            >
+              <DialogTrigger
+                render={
+                  <PromptInputButton
+                    className='border font-medium'
+                    disabled={disabled}
+                    variant={apiKey ? 'secondary' : 'outline'}
+                  />
+                }
+              >
+                <KeyRoundIcon size={16} />
+                <span className='hidden sm:inline'>
+                  {apiKey ? t('API Key set') : t('API Key')}
+                </span>
+                <span className='sr-only sm:hidden'>
+                  {apiKey ? t('API Key set') : t('API Key')}
+                </span>
+              </DialogTrigger>
+              <DialogContent className='sm:max-w-lg'>
+                <DialogHeader>
+                  <DialogTitle>{t('Playground API connection')}</DialogTitle>
+                  <DialogDescription>
+                    {t(
+                      'Use a new-api key or an official OpenAI-compatible provider key. Settings are stored locally in this browser.'
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor='playground-api-base-url'>
+                      {t('Base URL')}
+                    </FieldLabel>
+                    <Input
+                      id='playground-api-base-url'
+                      autoComplete='off'
+                      placeholder='/v1'
+                      value={draftApiBaseUrl}
+                      onChange={(event) =>
+                        setDraftApiBaseUrl(event.target.value)
+                      }
+                    />
+                    <FieldDescription>
+                      {t(
+                        'Use /v1 for keys generated by this new-api instance. For official provider keys, use that provider official OpenAI-compatible Base URL.'
+                      )}
+                    </FieldDescription>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor='playground-api-key'>
+                      {t('API Key')}
+                    </FieldLabel>
+                    <Input
+                      id='playground-api-key'
+                      autoComplete='off'
+                      placeholder='sk-...'
+                      type='password'
+                      value={draftApiKey}
+                      onChange={(event) => setDraftApiKey(event.target.value)}
+                    />
+                    <FieldDescription>
+                      {t(
+                        'When set, requests use the configured Base URL with Bearer authentication instead of the current dashboard session.'
+                      )}
+                    </FieldDescription>
+                  </Field>
+                  <Field>
+                    <FieldLabel>{t('Official Base URL examples')}</FieldLabel>
+                    <div className='flex flex-wrap gap-2'>
+                      {officialBaseUrlExamples.map((example) => (
+                        <Button
+                          key={example.name}
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={() => setDraftApiBaseUrl(example.url)}
+                        >
+                          {example.name}
+                        </Button>
+                      ))}
+                    </div>
+                    <FieldDescription>
+                      {t(
+                        'Some official provider APIs may block browser requests because of CORS. If that happens, add the provider as a Channel and use /v1 with a new-api key.'
+                      )}
+                    </FieldDescription>
+                  </Field>
+                </FieldGroup>
+                <DialogFooter>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={handleClearApiKey}
+                  >
+                    {t('Clear')}
+                  </Button>
+                  <Button type='button' onClick={handleSaveApiKey}>
+                    {t('Save API Key')}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             <ModelGroupSelector
               selectedModel={modelValue}
               models={models}

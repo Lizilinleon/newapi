@@ -26,6 +26,7 @@ type BaseNavItem = {
   title: string
   badge?: string
   icon?: React.ElementType
+  defaultOpen?: boolean
   activeUrls?: (LinkProps['to'] | (string & {}))[]
   configUrls?: (LinkProps['to'] | (string & {}))[]
 }
@@ -116,8 +117,8 @@ export type SidebarView = {
   id: string
   /** Path matcher that activates this view */
   pathPattern: RegExp
-  /** Back-navigation descriptor; required for nested views */
-  parent: SidebarViewParent
+  /** Optional back-navigation descriptor for drill-in views */
+  parent?: SidebarViewParent
   /** Nav group builder, called per render with the active translator */
   getNavGroups: (t: TFunction) => NavGroup[]
 }

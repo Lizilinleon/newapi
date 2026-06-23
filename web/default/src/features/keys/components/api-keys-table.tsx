@@ -181,6 +181,14 @@ function ApiKeysMobileList({
                 </span>
               )}
             </div>
+            <div className='flex items-center justify-between gap-2 text-xs'>
+              <span className='text-muted-foreground'>{t('Billing')}</span>
+              <span className='font-medium'>
+                {(apiKey.enterprise_id || 0) > 0
+                  ? t('Company billing')
+                  : t('Personal account billing')}
+              </span>
+            </div>
           </div>
         )
       })}

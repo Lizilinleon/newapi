@@ -119,6 +119,66 @@ export function saveMessages(messages: Message[]): void {
 }
 
 /**
+ * Load the optional playground API key from localStorage.
+ */
+export function loadApiKey(): string {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.API_KEY) || ''
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to load playground API key:', error)
+  }
+  return ''
+}
+
+/**
+ * Save or clear the optional playground API key in localStorage.
+ */
+export function saveApiKey(apiKey: string): void {
+  try {
+    const trimmed = apiKey.trim()
+    if (trimmed) {
+      localStorage.setItem(STORAGE_KEYS.API_KEY, trimmed)
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.API_KEY)
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to save playground API key:', error)
+  }
+}
+
+/**
+ * Load the optional playground API base URL from localStorage.
+ */
+export function loadApiBaseUrl(): string {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.API_BASE_URL) || ''
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to load playground API base URL:', error)
+  }
+  return ''
+}
+
+/**
+ * Save or clear the optional playground API base URL in localStorage.
+ */
+export function saveApiBaseUrl(apiBaseUrl: string): void {
+  try {
+    const trimmed = apiBaseUrl.trim()
+    if (trimmed) {
+      localStorage.setItem(STORAGE_KEYS.API_BASE_URL, trimmed)
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.API_BASE_URL)
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to save playground API base URL:', error)
+  }
+}
+
+/**
  * Clear all playground data
  */
 export function clearPlaygroundData(): void {
@@ -126,6 +186,8 @@ export function clearPlaygroundData(): void {
     localStorage.removeItem(STORAGE_KEYS.CONFIG)
     localStorage.removeItem(STORAGE_KEYS.PARAMETER_ENABLED)
     localStorage.removeItem(STORAGE_KEYS.MESSAGES)
+    localStorage.removeItem(STORAGE_KEYS.API_KEY)
+    localStorage.removeItem(STORAGE_KEYS.API_BASE_URL)
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Failed to clear playground data:', error)

@@ -192,6 +192,28 @@ export function useApiKeysColumns(): ColumnDef<ApiKey>[] {
       meta: { label: t('Quota') },
     },
     {
+      id: 'billing_source',
+      accessorKey: 'enterprise_id',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('Billing')} />
+      ),
+      cell: ({ row }) => {
+        const isCompanyBilled = (row.original.enterprise_id || 0) > 0
+        return (
+          <StatusBadge
+            label={
+              isCompanyBilled
+                ? t('Company billing')
+                : t('Personal account billing')
+            }
+            variant={isCompanyBilled ? 'info' : 'neutral'}
+            copyable={false}
+          />
+        )
+      },
+      meta: { label: t('Billing'), mobileHidden: true },
+    },
+    {
       accessorKey: 'group',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('Group')} />

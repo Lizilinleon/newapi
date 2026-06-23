@@ -432,9 +432,9 @@ const logSearchCountLimit = 10000
 func GetUserLogs(userId int, logType int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string, startIdx int, num int, group string, requestId string, upstreamRequestId string) (logs []*Log, total int64, err error) {
 	var tx *gorm.DB
 	if logType == LogTypeUnknown {
-		tx = LOG_DB.Where("logs.user_id = ?", userId)
+		tx = LOG_DB.Where("logs.user_id = ? AND logs.enterprise_id = ?", userId, 0)
 	} else {
-		tx = LOG_DB.Where("logs.user_id = ? and logs.type = ?", userId, logType)
+		tx = LOG_DB.Where("logs.user_id = ? AND logs.enterprise_id = ? AND logs.type = ?", userId, 0, logType)
 	}
 
 	if tx, err = applyExplicitLogTextFilter(tx, "logs.model_name", modelName); err != nil {
@@ -480,6 +480,14 @@ type Stat struct {
 }
 
 func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string) (stat Stat, err error) {
+	return sumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group, false)
+}
+
+func SumPersonalUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string) (stat Stat, err error) {
+	return sumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group, true)
+}
+
+func sumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string, personalOnly bool) (stat Stat, err error) {
 	tx := LOG_DB.Table("logs").Select("sum(quota) quota")
 
 	// 为rpm和tpm创建单独的查询
@@ -514,6 +522,10 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	if group != "" {
 		tx = tx.Where(logGroupCol+" = ?", group)
 		rpmTpmQuery = rpmTpmQuery.Where(logGroupCol+" = ?", group)
+	}
+	if personalOnly {
+		tx = tx.Where("enterprise_id = ?", 0)
+		rpmTpmQuery = rpmTpmQuery.Where("enterprise_id = ?", 0)
 	}
 
 	tx = tx.Where("type = ?", LogTypeConsume)

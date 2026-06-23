@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useQuery } from '@tanstack/react-query'
 import {
   Box,
   Building2,
@@ -34,6 +35,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { type SidebarData } from '@/components/layout/types'
+import { getEnterpriseSummary } from '@/features/enterprise/api'
 
 /**
  * Root navigation groups for the application sidebar.
@@ -43,6 +45,60 @@ import { type SidebarData } from '@/components/layout/types'
  */
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
+  const enterpriseSummaryQuery = useQuery({
+    queryKey: ['enterprise', 'summary'],
+    queryFn: getEnterpriseSummary,
+    staleTime: 30_000,
+  })
+  const isEnterpriseMember =
+    enterpriseSummaryQuery.data?.success &&
+    enterpriseSummaryQuery.data.data?.mode === 'member'
+  const enterpriseItems = [
+    {
+      title: t('Overview'),
+      url: '/enterprise/overview',
+      activeUrls: ['/enterprise', '/enterprise/'],
+      icon: Building2,
+    },
+    ...(!isEnterpriseMember
+      ? [
+          {
+            title: t('Member management'),
+            url: '/enterprise/members',
+            icon: Users,
+          },
+        ]
+      : []),
+    {
+      title: t('API Keys'),
+      url: '/enterprise/member-api',
+      icon: Key,
+    },
+    {
+      title: t('Usage logs'),
+      url: '/enterprise/usage-logs',
+      icon: FileText,
+    },
+  ]
+  const personalServiceItems = [
+    {
+      title: t('API Keys'),
+      url: '/keys',
+      icon: Key,
+    },
+    {
+      title: t('Usage Logs'),
+      url: '/usage-logs/common',
+      icon: FileText,
+    },
+    {
+      title: t('Task Logs'),
+      url: '/usage-logs/task',
+      activeUrls: ['/usage-logs/drawing'],
+      configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
+      icon: ListTodo,
+    },
+  ]
 
   return {
     navGroups: [
@@ -63,36 +119,26 @@ export function useSidebarData(): SidebarData {
         ],
       },
       {
-        id: 'general',
-        title: t('General'),
+        id: 'service',
+        title: t('Service'),
         items: [
           {
             title: t('Enterprise'),
-            url: '/enterprise',
             icon: Building2,
+            defaultOpen: true,
+            items: enterpriseItems,
           },
           {
-            title: t('API Keys'),
-            url: '/keys',
-            icon: Key,
-          },
-          {
-            title: t('Usage Logs'),
-            url: '/usage-logs/common',
-            icon: FileText,
-          },
-          {
-            title: t('Task Logs'),
-            url: '/usage-logs/task',
-            activeUrls: ['/usage-logs/drawing'],
-            configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
-            icon: ListTodo,
+            title: t('Personal'),
+            icon: User,
+            defaultOpen: true,
+            items: personalServiceItems,
           },
         ],
       },
       {
-        id: 'personal',
-        title: t('Personal'),
+        id: 'settings',
+        title: t('Settings'),
         items: [
           {
             title: t('Wallet'),
@@ -103,6 +149,13 @@ export function useSidebarData(): SidebarData {
             title: t('Profile'),
             url: '/profile',
             icon: User,
+          },
+          {
+            title: t('More Settings'),
+            url: '/settings/account-bindings',
+            activeUrls: ['/settings'],
+            configUrls: ['/settings'],
+            icon: Settings,
           },
         ],
       },
@@ -126,6 +179,11 @@ export function useSidebarData(): SidebarData {
             icon: Users,
           },
           {
+            title: t('Enterprise List'),
+            url: '/enterprises',
+            icon: Building2,
+          },
+          {
             title: t('Redemption Codes'),
             url: '/redemption-codes',
             icon: Ticket,
@@ -134,6 +192,17 @@ export function useSidebarData(): SidebarData {
             title: t('Subscription Management'),
             url: '/subscriptions',
             icon: CreditCard,
+          },
+          {
+            title: t('Admin Logs'),
+            url: '/admin-logs/common',
+            activeUrls: ['/admin-logs'],
+            configUrls: [
+              '/admin-logs/common',
+              '/admin-logs/drawing',
+              '/admin-logs/task',
+            ],
+            icon: FileText,
           },
           {
             title: t('System Settings'),

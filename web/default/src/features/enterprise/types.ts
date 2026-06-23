@@ -33,10 +33,34 @@ export type PageData<T> = {
 export type EnterpriseAccount = {
   id: number
   owner_user_id: number
+  created_by_user_id: number
   name: string
+  quota: number
   status: number
   created_at: number
   updated_at: number
+}
+
+export type AdminEnterpriseAccount = {
+  id: number
+  name: string
+  quota: number
+  status: number
+  created_at: number
+  updated_at: number
+  created_by_user_id: number
+  created_by_username: string
+  created_by_email: string
+  active_owner_user_id: number
+  active_owner_username: string
+  active_owner_email: string
+  member_count: number
+  active_member_count: number
+  token_count: number
+  used_quota: number
+  request_count: number
+  detached: boolean
+  legacy_owner_user_id: number
 }
 
 export type EnterpriseOwner = {
@@ -67,6 +91,8 @@ export type EnterpriseMember = {
   used_quota: number
   request_count: number
   token_count: number
+  allocated_quota: number
+  quota_warning_threshold: number
   enterprise_used_quota: number
   enterprise_request_count: number
 }
@@ -79,30 +105,47 @@ export type EnterpriseTotals = {
   request_count: number
 }
 
+export type EnterpriseBalanceWarning = {
+  enabled: boolean
+  email_enabled: boolean
+  threshold_percent: number
+  remaining_percent: number
+  owner_quota: number
+  total_quota: number
+  is_low: boolean
+}
+
 export type EnterpriseSummary = {
-  mode: 'owner' | 'member'
+  mode: 'none' | 'owner' | 'member'
   enterprise?: EnterpriseAccount
   owner?: EnterpriseOwner
   member?: EnterpriseMember
   members: EnterpriseMember[]
   totals: EnterpriseTotals
+  balance_warning?: EnterpriseBalanceWarning
+}
+
+export type AdminEnterpriseMembersData = {
+  items: EnterpriseMember[]
+  totals: EnterpriseTotals
 }
 
 export type EnterpriseCreateMemberPayload = {
-  username: string
-  password: string
+  email: string
   display_name?: string
-  email?: string
-  group?: string
 }
 
-export type EnterpriseDevSessionUser = {
-  id: number
-  username: string
-  display_name: string
-  role: number
-  status: number
-  group: string
+export type EnterpriseCreateAccountPayload = {
+  name: string
+}
+
+export type EnterpriseAllocateQuotaPayload = {
+  allocated_quota: number
+  warning_threshold?: number
+}
+
+export type EnterpriseTransferQuotaPayload = {
+  quota: number
 }
 
 export type ApiKeyMeta = {
@@ -114,9 +157,15 @@ export type ApiKeyMeta = {
   remain_quota: number
   used_quota: number
   unlimited_quota: boolean
+  model_limits_enabled: boolean
+  model_limits: string
+  allow_ips: string
+  group: string
+  cross_group_retry: boolean
   created_time: number
   accessed_time: number
   expired_time: number
+  enterprise_id: number
 }
 
 export type EnterpriseLog = {

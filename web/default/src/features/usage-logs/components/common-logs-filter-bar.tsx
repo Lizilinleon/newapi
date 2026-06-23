@@ -18,11 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQueryClient, useIsFetching } from '@tanstack/react-query'
-import { useNavigate, getRouteApi } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { type Table } from '@tanstack/react-table'
 import { Eye, EyeOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useIsAdmin } from '@/hooks/use-admin'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -50,7 +49,6 @@ import {
 } from './logs-filter-toolbar'
 import { useUsageLogsContext } from './usage-logs-provider'
 
-const route = getRouteApi('/_authenticated/usage-logs/$section')
 const logTypeValues = ['0', '1', '2', '3', '4', '5', '6'] as const
 
 type LogTypeValue = (typeof logTypeValues)[number]
@@ -61,6 +59,7 @@ function isLogTypeValue(value: string): value is LogTypeValue {
 
 interface CommonLogsFilterBarProps<TData> {
   table: Table<TData>
+  isAdminView: boolean
 }
 
 export function CommonLogsFilterBar<TData>(
@@ -69,8 +68,8 @@ export function CommonLogsFilterBar<TData>(
   const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const searchParams = route.useSearch()
-  const isAdmin = useIsAdmin()
+  const searchParams = useSearch({ strict: false }) as Record<string, unknown>
+  const { isAdminView } = props
   const { sensitiveVisible, setSensitiveVisible } = useUsageLogsContext()
   const fetchingLogs = useIsFetching({ queryKey: ['logs'] })
 
@@ -84,16 +83,33 @@ export function CommonLogsFilterBar<TData>(
     const { start, end } = getDefaultTimeRange()
     setFilters({
       startTime: searchParams.startTime
-        ? new Date(searchParams.startTime)
+        ? new Date(searchParams.startTime as number)
         : start,
-      endTime: searchParams.endTime ? new Date(searchParams.endTime) : end,
-      channel: searchParams.channel || undefined,
-      model: searchParams.model || undefined,
-      token: searchParams.token || undefined,
-      group: searchParams.group || undefined,
-      username: searchParams.username || undefined,
-      requestId: searchParams.requestId || undefined,
-      upstreamRequestId: searchParams.upstreamRequestId || undefined,
+      endTime: searchParams.endTime
+        ? new Date(searchParams.endTime as number)
+        : end,
+      channel:
+        isAdminView && typeof searchParams.channel === 'string'
+          ? searchParams.channel
+          : undefined,
+      model:
+        typeof searchParams.model === 'string' ? searchParams.model : undefined,
+      token:
+        typeof searchParams.token === 'string' ? searchParams.token : undefined,
+      group:
+        typeof searchParams.group === 'string' ? searchParams.group : undefined,
+      username:
+        isAdminView && typeof searchParams.username === 'string'
+          ? searchParams.username
+          : undefined,
+      requestId:
+        typeof searchParams.requestId === 'string'
+          ? searchParams.requestId
+          : undefined,
+      upstreamRequestId:
+        typeof searchParams.upstreamRequestId === 'string'
+          ? searchParams.upstreamRequestId
+          : undefined,
     })
 
     const typeArr = searchParams.type
@@ -115,6 +131,7 @@ export function CommonLogsFilterBar<TData>(
     searchParams.requestId,
     searchParams.upstreamRequestId,
     searchParams.type,
+    isAdminView,
   ])
 
   const handleChange = useCallback(
@@ -127,8 +144,6 @@ export function CommonLogsFilterBar<TData>(
   const handleApply = useCallback(() => {
     const filterParams = buildSearchParams(filters, 'common')
     navigate({
-      to: '/usage-logs/$section',
-      params: { section: 'common' },
       search: {
         ...filterParams,
         type: [logType],
@@ -146,8 +161,6 @@ export function CommonLogsFilterBar<TData>(
     setLogType(LOG_TYPE_ALL_VALUE)
 
     navigate({
-      to: '/usage-logs/$section',
-      params: { section: 'common' },
       search: {
         page: 1,
         type: [LOG_TYPE_ALL_VALUE],
@@ -168,8 +181,8 @@ export function CommonLogsFilterBar<TData>(
 
   const hasExpandedFilters =
     !!filters.token ||
-    !!filters.username ||
-    !!filters.channel ||
+    (isAdminView && !!filters.username) ||
+    (isAdminView && !!filters.channel) ||
     !!filters.requestId ||
     !!filters.upstreamRequestId
 
@@ -179,8 +192,8 @@ export function CommonLogsFilterBar<TData>(
 
   const expandedFilterCount = [
     filters.token,
-    isAdmin ? filters.username : undefined,
-    isAdmin ? filters.channel : undefined,
+    isAdminView ? filters.username : undefined,
+    isAdminView ? filters.channel : undefined,
     filters.requestId,
     filters.upstreamRequestId,
   ].filter(Boolean).length
@@ -198,7 +211,7 @@ export function CommonLogsFilterBar<TData>(
 
   const statsBar = (
     <div className='flex flex-wrap items-center gap-2'>
-      <CommonLogsStats />
+      <CommonLogsStats isAdminView={isAdminView} />
       <Tooltip>
         <TooltipTrigger
           render={
@@ -290,7 +303,7 @@ export function CommonLogsFilterBar<TData>(
           onKeyDown={handleKeyDown}
         />
       </LogsFilterField>
-      {isAdmin && (
+      {isAdminView && (
         <LogsFilterField>
           <LogsFilterInput
             placeholder={t('Username')}
@@ -301,7 +314,7 @@ export function CommonLogsFilterBar<TData>(
           />
         </LogsFilterField>
       )}
-      {isAdmin && (
+      {isAdminView && (
         <LogsFilterField>
           <LogsFilterInput
             placeholder={t('Channel ID')}

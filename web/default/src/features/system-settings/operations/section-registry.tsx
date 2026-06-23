@@ -49,6 +49,7 @@ const OPERATIONS_SECTIONS = [
         defaultValues={{
           ChannelDisableThreshold: settings.ChannelDisableThreshold,
           QuotaRemindThreshold: settings.QuotaRemindThreshold,
+          UserQuotaNotifyEnabled: settings.UserQuotaNotifyEnabled,
           AutomaticDisableChannelEnabled:
             settings.AutomaticDisableChannelEnabled,
           AutomaticEnableChannelEnabled: settings.AutomaticEnableChannelEnabled,
@@ -59,6 +60,10 @@ const OPERATIONS_SECTIONS = [
             settings['monitor_setting.auto_test_channel_enabled'],
           'monitor_setting.auto_test_channel_minutes':
             settings['monitor_setting.auto_test_channel_minutes'],
+          'enterprise_setting.balance_email_notify_enabled':
+            settings['enterprise_setting.balance_email_notify_enabled'],
+          'enterprise_setting.balance_warning_percent':
+            settings['enterprise_setting.balance_warning_percent'],
         }}
       />
     ),

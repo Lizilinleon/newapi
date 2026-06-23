@@ -115,8 +115,13 @@ export function SidebarModulesCard() {
         },
         {
           key: 'personal',
-          title: t('Personal Settings'),
+          title: t('Profile'),
           description: t('Personal info settings'),
+        },
+        {
+          key: 'settings',
+          title: t('Settings'),
+          description: t('Account and sidebar preferences'),
         },
       ],
     },

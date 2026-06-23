@@ -92,6 +92,37 @@ func authHelper(c *gin.Context, minRole int) {
 			return
 		}
 	}
+	if !useAccessToken && model.DB != nil {
+		sessionUserId, ok := id.(int)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgAuthUserIdFormatError),
+			})
+			c.Abort()
+			return
+		}
+		userCache, err := model.GetUserCache(sessionUserId)
+		if err != nil {
+			common.SysLog(fmt.Sprintf("authHelper GetUserCache error for user %d: %v", sessionUserId, err))
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgDatabaseError),
+			})
+			c.Abort()
+			return
+		}
+		if cachedStatus, ok := status.(int); !ok || cachedStatus != userCache.Status {
+			status = userCache.Status
+			session.Set("status", userCache.Status)
+			if userCache.Status == common.UserStatusDisabled {
+				session.Clear()
+			}
+			if err := session.Save(); err != nil {
+				common.SysLog(fmt.Sprintf("failed to refresh session status for user %d: %v", sessionUserId, err))
+			}
+		}
+	}
 	// get header New-Api-User
 	apiUserIdStr := c.Request.Header.Get("New-Api-User")
 	var apiUserId int
@@ -389,7 +420,7 @@ func TokenAuth() func(c *gin.Context) {
 		common.SetContextKey(c, constant.ContextKeyBillingUserName, userCache.Username)
 		common.SetContextKey(c, constant.ContextKeyBillingUserQuota, userCache.Quota)
 
-		enterpriseBilling, err := model.GetEnterpriseBillingContext(token.UserId)
+		enterpriseBilling, err := model.GetEnterpriseBillingContextForToken(token.UserId, token.EnterpriseId)
 		if err != nil {
 			if errors.Is(err, model.ErrEnterpriseMemberDisabled) || errors.Is(err, model.ErrEnterpriseDisabled) {
 				abortWithOpenAiMessage(c, http.StatusForbidden, err.Error(), types.ErrorCodeAccessDenied)
@@ -400,14 +431,14 @@ func TokenAuth() func(c *gin.Context) {
 				common.TranslateMessage(c, i18n.MsgDatabaseError))
 			return
 		}
+		if token.EnterpriseId > 0 && enterpriseBilling == nil {
+			abortWithOpenAiMessage(c, http.StatusForbidden, "enterprise billing source is no longer available", types.ErrorCodeAccessDenied)
+			return
+		}
 		if enterpriseBilling != nil {
 			common.SetContextKey(c, constant.ContextKeyEnterpriseId, enterpriseBilling.EnterpriseId)
 			common.SetContextKey(c, constant.ContextKeyEnterpriseRole, model.EnterpriseRoleMember)
 			common.SetContextKey(c, constant.ContextKeyEnterpriseStatus, model.EnterpriseMemberStatusActive)
-			common.SetContextKey(c, constant.ContextKeyBillingUserId, enterpriseBilling.OwnerUserId)
-			common.SetContextKey(c, constant.ContextKeyBillingUserEmail, enterpriseBilling.OwnerEmail)
-			common.SetContextKey(c, constant.ContextKeyBillingUserName, enterpriseBilling.OwnerName)
-			common.SetContextKey(c, constant.ContextKeyBillingUserQuota, enterpriseBilling.OwnerQuota)
 		}
 
 		userGroup := userCache.Group
