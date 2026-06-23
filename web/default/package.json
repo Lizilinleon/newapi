@@ -19,6 +19,9 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
+    "@douyinfe/semi-icons": "^2.63.1",
+    "@douyinfe/semi-illustrations": "^2.69.1",
+    "@douyinfe/semi-ui": "^2.69.1",
     "@fontsource-variable/lora": "^5.2.8",
     "@fontsource-variable/public-sans": "^5.2.7",
     "@hookform/resolvers": "^5.4.0",
@@ -56,6 +59,8 @@
     "react-icons": "catalog:",
     "react-markdown": "catalog:",
     "react-resizable-panels": "^4.11.2",
+    "react-router-dom": "^6.3.0",
+    "react-toastify": "^11.0.5",
     "react-top-loading-bar": "^3.0.2",
     "recharts": "3.8.1",
     "rehype-raw": "^7.0.0",

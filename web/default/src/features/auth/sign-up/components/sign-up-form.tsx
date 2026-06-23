@@ -127,7 +127,7 @@ export function SignUpForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-4', className)}
+        className={cn('grid gap-5 text-base', className)}
         {...props}
       >
         <FormField
@@ -182,7 +182,7 @@ export function SignUpForm({
                   <Button
                     type='button'
                     variant='outline'
-                    className='shrink-0'
+                    className='shrink-0 rounded-xl border-rose-200/80 bg-white/55 text-rose-700 shadow-sm transition hover:bg-rose-50/80 dark:border-rose-300/20 dark:bg-white/5 dark:text-rose-100 dark:hover:bg-rose-300/10'
                     disabled={isSending || isActive || isLoading}
                     onClick={handleSendCode}
                   >
@@ -238,7 +238,7 @@ export function SignUpForm({
 
         <Button
           type='submit'
-          className='mt-2 w-full justify-center gap-2'
+          className='mt-3 h-12 w-full justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-sky-500 text-base font-bold text-white shadow-[0_16px_36px_-18px_rgba(37,99,235,0.85)] transition hover:opacity-95'
           disabled={isLoading}
         >
           {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : null}

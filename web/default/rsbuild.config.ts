@@ -1,10 +1,16 @@
 import path from 'path'
+import { createRequire } from 'module'
 import { fileURLToPath } from 'url'
 import { defineConfig, loadEnv } from '@rsbuild/core'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { tanstackRouter } from '@tanstack/router-plugin/rspack'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const require = createRequire(import.meta.url)
+const semiUiDir = path.resolve(
+  path.dirname(require.resolve('@douyinfe/semi-ui')),
+  '../..'
+)
 
 export default defineConfig(({ envMode }) => {
   const env = loadEnv({ mode: envMode, prefixes: ['VITE_'] })
@@ -58,6 +64,10 @@ export default defineConfig(({ envMode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        '@douyinfe/semi-ui/dist/css/semi.css': path.resolve(
+          semiUiDir,
+          'dist/css/semi.css'
+        ),
       },
     },
     html: {

@@ -17,7 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import z from 'zod'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import { ModelDetails } from '@/features/pricing/components/model-details'
 
 const modelDetailsSearchSchema = z.object({
   search: z.string().optional(),
@@ -34,7 +35,5 @@ const modelDetailsSearchSchema = z.object({
 
 export const Route = createFileRoute('/pricing/$modelId/')({
   validateSearch: modelDetailsSearchSchema,
-  beforeLoad: async () => {
-    throw redirect({ to: '/enterprise' })
-  },
+  component: ModelDetails,
 })
