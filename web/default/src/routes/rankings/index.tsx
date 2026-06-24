@@ -21,7 +21,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 
 const rankingsSearchSchema = z.object({
   period: z
-    .enum(['today', 'week', 'month', 'year', 'all'])
+    .enum(['today', 'week', 'month', 'year'])
     .optional()
     .catch(undefined),
 })

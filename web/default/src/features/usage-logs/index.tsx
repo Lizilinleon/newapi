@@ -119,12 +119,12 @@ function UsageLogsContent({ mode }: UsageLogsContentProps) {
 
   return (
     <>
-      <SectionPageLayout>
+      <SectionPageLayout fixedContent>
         <SectionPageLayout.Title>
           {t(pageTitleKey)}
         </SectionPageLayout.Title>
         <SectionPageLayout.Content>
-          <div className='space-y-4'>
+          <div className='flex h-full min-h-0 flex-col gap-4'>
             {showTaskSwitcher && (
               <Tabs value={activeCategory} onValueChange={handleSectionChange}>
                 <TabsList className='max-w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto'>
@@ -136,10 +136,12 @@ function UsageLogsContent({ mode }: UsageLogsContentProps) {
                 </TabsList>
               </Tabs>
             )}
-            <UsageLogsTable
-              logCategory={activeCategory}
-              isAdminView={isAdminView}
-            />
+            <div className='min-h-0 flex-1'>
+              <UsageLogsTable
+                logCategory={activeCategory}
+                isAdminView={isAdminView}
+              />
+            </div>
           </div>
         </SectionPageLayout.Content>
       </SectionPageLayout>

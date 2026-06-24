@@ -157,7 +157,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
   const filterValue = getFilterValue(filters, props.logCategory)
   const placeholder =
     props.logCategory === 'drawing'
-      ? t('Filter by Midjourney task ID')
+      ? t('Filter by MjProxy task ID')
       : t('Filter by task ID')
   const hasAdditionalFilters =
     !!filterValue || (props.isAdminView && !!filters.channel)
