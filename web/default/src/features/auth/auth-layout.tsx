@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useTranslation } from 'react-i18next'
+import { Link } from '@tanstack/react-router'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -36,9 +37,11 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         <div className='absolute right-[-6rem] bottom-[-4rem] size-96 rounded-full bg-rose-300/25 blur-3xl' />
         <div className='absolute inset-0 bg-[linear-gradient(to_right,rgba(14,165,233,0.055)_1px,transparent_1px),linear-gradient(to_bottom,rgba(244,63,94,0.05)_1px,transparent_1px)] bg-[size:72px_72px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_45%,black,transparent_78%)]' />
       </div>
-      <div
-        className='absolute top-4 left-4 z-10 flex items-center gap-2 rounded-full border border-white/60 bg-white/55 py-1 pr-4 pl-1.5 shadow-[0_14px_40px_-28px_rgba(14,165,233,0.9)] backdrop-blur-xl sm:top-8 sm:left-8 dark:border-white/10 dark:bg-white/5'
-        aria-label={systemName}
+      <Link
+        to='/'
+        className='absolute top-4 left-4 z-10 flex cursor-pointer select-none items-center gap-2 rounded-full border border-white/60 bg-white/55 py-1 pr-4 pl-1.5 shadow-[0_14px_40px_-28px_rgba(14,165,233,0.9)] backdrop-blur-xl transition hover:bg-white/75 hover:shadow-[0_18px_48px_-28px_rgba(14,165,233,1)] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none sm:top-8 sm:left-8 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10'
+        aria-label={t('Back to home')}
+        title={t('Back to home')}
       >
         <div className='relative h-8 w-8'>
           {loading ? (
@@ -58,7 +61,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             {systemName}
           </h1>
         )}
-      </div>
+      </Link>
       <div className='container relative z-10 flex items-center pt-16 sm:pt-0'>
         <div className='mx-auto flex w-full flex-col justify-center rounded-[2.25rem] border border-white/65 bg-white/62 px-6 py-10 shadow-[0_30px_96px_-46px_rgba(15,23,42,0.68)] backdrop-blur-2xl sm:w-[560px] sm:p-10 dark:border-white/10 dark:bg-slate-950/58'>
           {children}
