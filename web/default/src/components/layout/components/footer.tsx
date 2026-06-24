@@ -36,9 +36,12 @@ interface FooterColumnProps {
 interface FooterProps {
   logo?: string
   name?: string
+  description?: string | string[]
   columns?: FooterColumnProps[]
   copyright?: string
   className?: string
+  inverse?: boolean
+  centered?: boolean
 }
 
 const NEW_API_FOOTER_ATTRIBUTION_KEY = [
@@ -58,7 +61,7 @@ function FooterLinkItem(props: { link: FooterLink }) {
         href={props.link.href}
         target='_blank'
         rel='noopener noreferrer'
-        className='text-muted-foreground hover:text-foreground text-sm transition-colors duration-200'
+        className='text-muted-foreground hover:text-foreground text-lg transition-colors duration-200'
       >
         {label}
       </a>
@@ -68,7 +71,7 @@ function FooterLinkItem(props: { link: FooterLink }) {
   return (
     <Link
       to={props.link.href}
-      className='text-muted-foreground hover:text-foreground text-sm transition-colors duration-200'
+      className='text-muted-foreground hover:text-foreground text-lg transition-colors duration-200'
     >
       {label}
     </Link>
@@ -105,7 +108,7 @@ function LegalLinks(props: { leadingSeparator?: boolean }) {
         <Fragment key={item.key}>
           {(props.leadingSeparator || index > 0) && (
             <span aria-hidden='true' className='text-muted-foreground/30'>
-              ·
+              |
             </span>
           )}
           <Link
@@ -159,8 +162,15 @@ export function Footer(props: FooterProps) {
 
   const displayLogo = systemLogo || props.logo || '/logo.png'
   const displayName = systemName || props.name || 'New API'
+  const descriptionLines = Array.isArray(props.description)
+    ? props.description
+    : props.description
+      ? [props.description]
+      : [t('Powerful API Management Platform')]
   const isDemoSiteMode = Boolean(demoSiteEnabled)
   const currentYear = new Date().getFullYear()
+  const inverse = props.inverse === true
+  const centered = props.centered === true
 
   const fallbackColumns = useMemo<FooterColumnProps[]>(
     () => [
@@ -220,6 +230,17 @@ export function Footer(props: FooterProps) {
   )
 
   const displayColumns = props.columns ?? fallbackColumns
+  const shouldShowColumns =
+    displayColumns.length > 0 && (props.columns !== undefined || isDemoSiteMode)
+  const footerLinkClassName = inverse
+    ? '[&_a]:text-white/72 [&_a:hover]:text-white'
+    : ''
+  const legalRowClassName = inverse
+    ? 'text-white/58'
+    : 'text-muted-foreground/50'
+  const attributionClassName = inverse
+    ? 'text-white/48'
+    : 'text-muted-foreground/45'
 
   if (footerHtml) {
     return (
@@ -249,34 +270,73 @@ export function Footer(props: FooterProps) {
     <footer
       className={cn('border-border/40 relative z-10 border-t', props.className)}
     >
-      <div className='mx-auto max-w-6xl px-6 py-12 md:py-16'>
-        <div className='flex flex-col justify-between gap-10 md:flex-row md:gap-16'>
+      <div className='mx-auto max-w-7xl px-6 py-12 md:py-16'>
+        <div
+          className={cn(
+            'flex flex-col gap-10',
+            centered
+              ? 'items-center text-center'
+              : 'justify-between md:flex-row md:gap-16'
+          )}
+        >
           {/* Brand column */}
-          <div className='shrink-0'>
-            <Link to='/' className='group flex items-center gap-2.5'>
+          <div className={cn('shrink-0', centered && 'flex flex-col items-center')}>
+            <Link
+              to='/'
+              className={cn(
+                'group flex items-center gap-2.5',
+                centered && 'justify-center'
+              )}
+            >
               <img
                 src={displayLogo}
                 alt={displayName}
-                className='size-7 rounded-lg object-contain'
+                className='size-8 rounded-lg object-contain'
               />
-              <span className='text-sm font-semibold tracking-tight'>
+              <span
+                className={cn(
+                  'text-2xl font-black tracking-tight sm:text-3xl',
+                  inverse && 'text-white'
+                )}
+              >
                 {displayName}
               </span>
             </Link>
-            <p className='text-muted-foreground/60 mt-3 max-w-[200px] text-xs leading-relaxed'>
-              {t('Powerful API Management Platform')}
-            </p>
+            <div
+              className={cn(
+                'text-muted-foreground/60 mt-4 max-w-[420px] space-y-3 text-xl leading-relaxed',
+                inverse && 'text-white/68',
+                centered && 'mx-auto text-center'
+              )}
+            >
+              {descriptionLines.map((line, index) => (
+                <p key={index}>{line}</p>
+              ))}
+            </div>
           </div>
 
           {/* Links columns */}
-          {isDemoSiteMode && (
-            <div className='grid grid-cols-3 gap-8 md:gap-16'>
+          {shouldShowColumns && (
+            <div className='grid flex-1 gap-x-18 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 lg:justify-items-end'>
               {displayColumns.map((column, index) => (
-                <div key={index}>
-                  <p className='text-muted-foreground/50 mb-3 text-xs font-medium tracking-wider uppercase'>
-                    {t(column.title)}
-                  </p>
-                  <ul className='space-y-2.5'>
+                <div
+                  key={index}
+                  className={cn(
+                    footerLinkClassName,
+                    centered ? 'min-w-[170px] text-center' : 'min-w-[180px]'
+                  )}
+                >
+                  {column.title ? (
+                    <p
+                      className={cn(
+                        'text-muted-foreground/65 mb-4 text-base font-semibold tracking-wide uppercase',
+                        inverse && 'text-white/92'
+                      )}
+                    >
+                      {t(column.title)}
+                    </p>
+                  ) : null}
+                  <ul className='space-y-6'>
                     {column.links.map((link, linkIndex) => (
                       <li key={linkIndex}>
                         <FooterLinkItem link={link} />
@@ -291,15 +351,22 @@ export function Footer(props: FooterProps) {
 
         {/* Copyright + optional legal links inline on the left, project
             attribution on the right; wraps on narrow screens. */}
-        <div className='border-border/30 mt-12 flex flex-col items-center justify-between gap-x-3 gap-y-2 border-t pt-6 sm:flex-row'>
-          <div className='text-muted-foreground/40 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:justify-start'>
+        <div className='border-border/30 mt-12 flex flex-col items-center justify-center gap-x-3 gap-y-2 border-t pt-6 text-center'>
+          <div
+            className={cn(
+              'flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-base',
+              legalRowClassName
+            )}
+          >
             <span>
               &copy; {currentYear} {displayName}.{' '}
               {props.copyright ?? t('footer.defaultCopyright')}
             </span>
             <LegalLinks leadingSeparator />
           </div>
-          <ProjectAttribution currentYear={currentYear} />
+          <div className={cn(attributionClassName, 'text-center')}>
+            <ProjectAttribution currentYear={currentYear} />
+          </div>
         </div>
       </div>
     </footer>
