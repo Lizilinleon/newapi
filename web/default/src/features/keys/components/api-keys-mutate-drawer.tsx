@@ -127,6 +127,7 @@ export function ApiKeysMutateDrawer({
   const { data: enterpriseData } = useQuery({
     queryKey: ['enterprise', 'summary'],
     queryFn: getEnterpriseSummary,
+    enabled: open,
     staleTime: 60 * 1000,
   })
 

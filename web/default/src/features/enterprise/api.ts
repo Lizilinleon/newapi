@@ -124,6 +124,44 @@ export async function getEnterpriseMemberTokens(
   return res.data
 }
 
+export async function getEnterpriseOwnerTokens(params: {
+  enterpriseId?: number
+  page?: number
+  pageSize?: number
+  keyword?: string
+  token?: string
+  status?: string
+} = {}): Promise<ApiResponse<PageData<ApiKeyMeta>>> {
+  const query = new URLSearchParams()
+  query.set('p', String(params.page ?? 1))
+  query.set('size', String(params.pageSize ?? 20))
+  if (params.enterpriseId) {
+    query.set('enterprise_id', String(params.enterpriseId))
+  }
+  if (params.keyword) query.set('keyword', params.keyword)
+  if (params.token) query.set('token', params.token)
+  if (params.status) query.set('status', params.status)
+  try {
+    const res = await api.get('/api/enterprise/account/tokens', {
+      params: Object.fromEntries(query.entries()),
+      skipErrorHandler: true,
+      disableDuplicate: true,
+    })
+    return res.data
+  } catch (error: any) {
+    if (error?.response?.status !== 404) throw error
+    return {
+      success: true,
+      data: {
+        items: [],
+        total: 0,
+        page: params.page ?? 1,
+        page_size: params.pageSize ?? 20,
+      } as PageData<ApiKeyMeta>,
+    }
+  }
+}
+
 export async function createEnterpriseMemberToken(
   id: number,
   data: ApiKeyFormData

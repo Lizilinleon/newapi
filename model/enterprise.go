@@ -706,6 +706,30 @@ func GetEnterpriseBillingContextForToken(memberUserId int, enterpriseId int) (*E
 	if enterpriseId == 0 {
 		return nil, nil
 	}
+	if account, err := GetEnterpriseAccountByOwner(memberUserId); err == nil {
+		if account.Id != enterpriseId {
+			return nil, ErrEnterpriseDisabled
+		}
+		if account.Status != EnterpriseStatusEnabled {
+			return nil, ErrEnterpriseDisabled
+		}
+		owner, err := GetUserById(memberUserId, false)
+		if err != nil {
+			return nil, err
+		}
+		if owner.Status != common.UserStatusEnabled {
+			return nil, ErrEnterpriseDisabled
+		}
+		return &EnterpriseBillingContext{
+			EnterpriseId: enterpriseId,
+			OwnerUserId:  memberUserId,
+			OwnerName:    owner.Username,
+			OwnerEmail:   owner.Email,
+			OwnerQuota:   account.Quota,
+		}, nil
+	} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
 	member, err := GetEnterpriseMemberForUser(memberUserId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -723,6 +747,58 @@ func GetEnterpriseBillingContextForToken(memberUserId int, enterpriseId int) (*E
 		return nil, nil
 	}
 	return GetEnterpriseBillingContext(memberUserId)
+}
+
+func SearchEnterpriseOwnerTokens(ownerUserId int, enterpriseId int, keyword string, token string, status int, startIdx int, num int) ([]*Token, int64, error) {
+	account, err := GetEnterpriseAccountByOwner(ownerUserId)
+	if enterpriseId > 0 {
+		context, contextErr := GetEnterpriseBillingContextForToken(ownerUserId, enterpriseId)
+		if contextErr != nil {
+			return nil, 0, contextErr
+		}
+		if context == nil || context.EnterpriseId != enterpriseId {
+			return nil, 0, gorm.ErrRecordNotFound
+		}
+		account = &EnterpriseAccount{Id: enterpriseId}
+	} else if err != nil {
+		return nil, 0, err
+	}
+	if num <= 0 || num > searchHardLimit {
+		num = searchHardLimit
+	}
+	if startIdx < 0 {
+		startIdx = 0
+	}
+	if token != "" {
+		token = strings.TrimPrefix(token, "sk-")
+	}
+
+	query := DB.Model(&Token{}).Where("user_id = ? AND enterprise_id = ?", ownerUserId, account.Id)
+	if keyword != "" {
+		keywordPattern, err := sanitizeLikePattern(keyword)
+		if err != nil {
+			return nil, 0, err
+		}
+		query = query.Where("name LIKE ? ESCAPE '!'", keywordPattern)
+	}
+	if token != "" {
+		tokenPattern, err := sanitizeLikePattern(token)
+		if err != nil {
+			return nil, 0, err
+		}
+		query = query.Where(commonKeyCol+" LIKE ? ESCAPE '!'", tokenPattern)
+	}
+	if status > 0 {
+		query = query.Where("status = ?", status)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var tokens []*Token
+	err = query.Order("id desc").Limit(num).Offset(startIdx).Find(&tokens).Error
+	return tokens, total, err
 }
 
 func CreateEnterpriseMember(ownerUserId int, input EnterpriseCreateMemberInput) (*EnterpriseMemberView, error) {

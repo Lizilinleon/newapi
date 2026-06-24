@@ -242,6 +242,28 @@ func GetEnterpriseMemberTokens(c *gin.Context) {
 	common.ApiSuccess(c, pageInfo)
 }
 
+func GetEnterpriseOwnerTokens(c *gin.Context) {
+	pageInfo := common.GetPageQuery(c)
+	status, _ := strconv.Atoi(c.Query("status"))
+	enterpriseId, _ := strconv.Atoi(c.Query("enterprise_id"))
+	tokens, total, err := model.SearchEnterpriseOwnerTokens(
+		c.GetInt("id"),
+		enterpriseId,
+		c.Query("keyword"),
+		c.Query("token"),
+		status,
+		pageInfo.GetStartIdx(),
+		pageInfo.GetPageSize(),
+	)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(buildMaskedTokenResponses(tokens))
+	common.ApiSuccess(c, pageInfo)
+}
+
 func CreateEnterpriseMemberToken(c *gin.Context) {
 	memberId, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

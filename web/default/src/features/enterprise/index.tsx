@@ -123,21 +123,21 @@ import {
 import { useApiKeysColumns } from '@/features/keys/components/api-keys-columns'
 import { DataTableBulkActions } from '@/features/keys/components/data-table-bulk-actions'
 import { CCSwitchDialog } from '@/features/keys/components/dialogs/cc-switch-dialog'
+import { createApiKey } from '@/features/keys/api'
 import {
   API_KEY_STATUS,
   API_KEY_STATUS_OPTIONS,
-  ERROR_MESSAGES,
 } from '@/features/keys/constants'
 import type { ApiKey } from '@/features/keys/types'
 import {
   acceptEnterpriseInvitation,
   allocateEnterpriseMemberQuota,
   createEnterpriseAccount,
-  createEnterpriseMemberToken,
   createEnterpriseMember,
   dissolveEnterprise,
   getEnterpriseLogs,
   getEnterpriseMemberTokens,
+  getEnterpriseOwnerTokens,
   getEnterpriseSummary,
   leaveEnterprise,
   removeEnterpriseMember,
@@ -1578,24 +1578,19 @@ function MemberSelector(props: {
 
 function MemberApiKeysPanel(props: {
   member: EnterpriseMember | null
-  enterpriseId: number
 }) {
   return (
     <ApiKeysProvider>
-      <MemberApiKeysPanelContent
-        member={props.member}
-        enterpriseId={props.enterpriseId}
-      />
+      <MemberApiKeysPanelContent member={props.member} />
     </ApiKeysProvider>
   )
 }
 
 function MemberApiKeysPanelContent(props: {
   member: EnterpriseMember | null
-  enterpriseId: number
 }) {
   const { t } = useTranslation()
-  const { open, setOpen, refreshTrigger } = useApiKeys()
+  const { refreshTrigger } = useApiKeys()
   const tokensQuery = useQuery({
     queryKey: ['enterprise', 'member-tokens', props.member?.id, refreshTrigger],
     queryFn: () => getEnterpriseMemberTokens(props.member?.id ?? 0),
@@ -1612,14 +1607,6 @@ function MemberApiKeysPanelContent(props: {
             ? t('Masked API key metadata for the selected member.')
             : t('Select a member to inspect API key metadata.')}
         </CardDescription>
-        {props.member && (
-          <CardAction>
-            <Button size='sm' onClick={() => setOpen('create')}>
-              <Plus data-icon='inline-start' />
-              {t('Create API Key')}
-            </Button>
-          </CardAction>
-        )}
       </CardHeader>
       <CardContent>
         {!props.member ? (
@@ -1675,17 +1662,173 @@ function MemberApiKeysPanelContent(props: {
           </Table>
         )}
       </CardContent>
-      {props.member && (
-        <ApiKeysMutateDrawer
-          open={open === 'create'}
-          onOpenChange={(isOpen) => !isOpen && setOpen(null)}
-          initialEnterpriseId={props.enterpriseId}
-          lockEnterpriseId
-          createApiKeyFn={(data) =>
-            createEnterpriseMemberToken(props.member!.id, data)
+    </Card>
+  )
+}
+
+function OwnerPersonalApiKeysPanel(props: { enterpriseId: number }) {
+  return (
+    <ApiKeysProvider>
+      <OwnerPersonalApiKeysPanelContent enterpriseId={props.enterpriseId} />
+    </ApiKeysProvider>
+  )
+}
+
+function OwnerPersonalApiKeysPanelContent(props: {
+  enterpriseId: number
+}) {
+  const { t } = useTranslation()
+  const { open, setOpen, currentRow, resolvedKey, refreshTrigger } =
+    useApiKeys()
+  const columns = useApiKeysColumns()
+  const [rowSelection, setRowSelection] = useState({})
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState('')
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 20,
+  })
+  const [tokenFilterInput, setTokenFilterInput] = useState('')
+  const debouncedTokenFilter = useDebounce(tokenFilterInput, 500)
+  const statusFilter =
+    (
+      columnFilters.find((filter) => filter.id === 'status')
+        ?.value as string[] | undefined
+    )?.[0] ?? ''
+
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+  }, [globalFilter, debouncedTokenFilter, statusFilter])
+
+  const tokensQuery = useQuery({
+    queryKey: [
+      'enterprise',
+      'owner-company-billed-tokens',
+      props.enterpriseId,
+      pagination.pageIndex,
+      pagination.pageSize,
+      globalFilter,
+      debouncedTokenFilter,
+      statusFilter,
+      refreshTrigger,
+    ],
+    queryFn: () =>
+      getEnterpriseOwnerTokens({
+        enterpriseId: props.enterpriseId,
+        page: pagination.pageIndex + 1,
+        pageSize: pagination.pageSize,
+        keyword: globalFilter.trim(),
+        token: debouncedTokenFilter.trim(),
+        status: statusFilter,
+      }),
+    enabled: props.enterpriseId > 0,
+    placeholderData: (previousData) => previousData,
+  })
+  const tokens = (tokensQuery.data?.data?.items ?? []) as ApiKey[]
+  const total = tokensQuery.data?.data?.total ?? 0
+
+  const table = useReactTable({
+    data: tokens,
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters,
+      globalFilter,
+      pagination,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
+    globalFilterFn: () => true,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+    manualPagination: true,
+    pageCount: Math.max(1, Math.ceil(total / pagination.pageSize)),
+  })
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('Company-billed API keys')}</CardTitle>
+        <CardDescription>
+          {t('Only API keys charged to your organization allocation are shown here.')}
+        </CardDescription>
+        <CardAction>
+          <Button size='sm' onClick={() => setOpen('create')}>
+            <Plus data-icon='inline-start' />
+            {t('Create API Key')}
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <DataTablePage
+          table={table}
+          columns={columns}
+          isLoading={tokensQuery.isLoading}
+          isFetching={tokensQuery.isFetching}
+          emptyTitle={t('No API Keys Found')}
+          emptyDescription={t('No company-billed API keys yet.')}
+          skeletonKeyPrefix='owner-company-api-keys-skeleton'
+          toolbarProps={{
+            searchPlaceholder: t('Filter by name...'),
+            additionalSearch: (
+              <Input
+                placeholder={t('Filter by API key...')}
+                aria-label={t('Filter by API key...')}
+                value={tokenFilterInput}
+                onChange={(event) => setTokenFilterInput(event.target.value)}
+                className='w-full sm:w-50 lg:w-60'
+              />
+            ),
+            hasAdditionalFilters: Boolean(tokenFilterInput),
+            onReset: () => setTokenFilterInput(''),
+            filters: [
+              {
+                columnId: 'status',
+                title: t('Status'),
+                options: API_KEY_STATUS_OPTIONS,
+                singleSelect: true,
+              },
+            ],
+          }}
+          getRowClassName={(row, ctx) =>
+            row.original.status !== API_KEY_STATUS.ENABLED
+              ? ctx.isMobile
+                ? DISABLED_ROW_MOBILE
+                : DISABLED_ROW_DESKTOP
+              : undefined
           }
+          bulkActions={<DataTableBulkActions table={table} />}
         />
-      )}
+      </CardContent>
+      <ApiKeysMutateDrawer
+        open={open === 'create' || open === 'update'}
+        onOpenChange={(isOpen) => !isOpen && setOpen(null)}
+        currentRow={open === 'update' ? currentRow || undefined : undefined}
+        initialEnterpriseId={props.enterpriseId}
+        lockEnterpriseId
+        createApiKeyFn={(data) =>
+          createApiKey({ ...data, enterprise_id: props.enterpriseId })
+        }
+      />
+      <ApiKeysDeleteDialog />
+      <CCSwitchDialog
+        open={open === 'cc-switch'}
+        onOpenChange={(isOpen) => !isOpen && setOpen(null)}
+        tokenKey={resolvedKey}
+      />
     </Card>
   )
 }
@@ -2108,20 +2251,29 @@ function OwnerMembersSection(props: {
 }
 
 function OwnerMemberApiSection(props: {
+  enterpriseId: number
   members: EnterpriseMember[]
+  ownerUserId: number
   currentMember: EnterpriseMember | null
   onSelectMember: (member: EnterpriseMember | null) => void
 }) {
+  const memberAccounts = props.members.filter(
+    (member) => member.member_user_id !== props.ownerUserId
+  )
+  const selectedMember =
+    memberAccounts.find((member) => member.id === props.currentMember?.id) ??
+    null
+
   return (
     <div className='flex flex-col gap-4'>
+      <OwnerPersonalApiKeysPanel enterpriseId={props.enterpriseId} />
       <MemberSelector
-        members={props.members}
-        selectedMemberId={props.currentMember?.id ?? null}
+        members={memberAccounts}
+        selectedMemberId={selectedMember?.id ?? null}
         onSelectMember={props.onSelectMember}
       />
       <MemberApiKeysPanel
-        member={props.currentMember}
-        enterpriseId={props.currentMember?.enterprise_id ?? 0}
+        member={selectedMember}
       />
     </div>
   )
@@ -2192,7 +2344,9 @@ function OwnerView(props: { summary: EnterpriseSummary }) {
     if (section === 'member-api') {
       return (
         <OwnerMemberApiSection
+          enterpriseId={props.summary.enterprise?.id ?? 0}
           members={props.summary.members}
+          ownerUserId={props.summary.owner?.id ?? 0}
           currentMember={currentMember}
           onSelectMember={setSelectedMember}
         />
