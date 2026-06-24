@@ -4,6 +4,7 @@
 
 .classic-pricing-shell {
   min-height: 100vh;
+  padding-top: 64px;
   background: var(--semi-color-bg-0);
 }
 
@@ -23,9 +24,9 @@
 }
 
 .pricing-sidebar {
-  width: clamp(280px, 24vw, 520px) !important;
-  min-width: clamp(280px, 24vw, 520px) !important;
-  max-width: clamp(280px, 24vw, 520px) !important;
+  width: clamp(300px, 20vw, 380px) !important;
+  min-width: clamp(300px, 20vw, 380px) !important;
+  max-width: clamp(300px, 20vw, 380px) !important;
   height: calc(100vh - 64px);
   background-color: var(--semi-color-bg-0);
   overflow: auto;
