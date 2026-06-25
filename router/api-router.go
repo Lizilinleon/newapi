@@ -303,6 +303,7 @@ func SetApiRouter(router *gin.Engine) {
 			enterpriseRoute.PATCH("/members/:id", controller.UpdateEnterpriseMember)
 			enterpriseRoute.DELETE("/members/:id", controller.DeleteEnterpriseMember)
 			enterpriseRoute.POST("/members/:id/quota", controller.AllocateEnterpriseMemberQuota)
+			enterpriseRoute.GET("/account/tokens", controller.GetEnterpriseOwnerTokens)
 			enterpriseRoute.GET("/members/:id/tokens", controller.GetEnterpriseMemberTokens)
 			enterpriseRoute.POST("/members/:id/tokens", controller.CreateEnterpriseMemberToken)
 			enterpriseRoute.GET("/logs", controller.GetEnterpriseLogs)

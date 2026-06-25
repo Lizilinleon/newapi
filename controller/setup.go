@@ -194,13 +194,13 @@ func boolToString(b bool) string {
 }
 
 func detectSetupDatabaseType() string {
-	if common.UsingMySQL {
+	if common.UsingMainDatabase(common.DatabaseTypeMySQL) {
 		return "mysql"
 	}
-	if common.UsingPostgreSQL {
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
 		return "postgres"
 	}
-	if common.UsingSQLite {
+	if common.UsingMainDatabase(common.DatabaseTypeSQLite) {
 		return "sqlite"
 	}
 	return ""
