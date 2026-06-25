@@ -36,6 +36,7 @@ import { Footer } from '@/components/layout/components/footer'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { LanguageSwitcher } from '@/components/language-switcher'
+import { useHomePageContent } from '@/features/home/hooks'
 
 const endpoints = ['/v1/chat/completions', '/v1/responses', '/v1/embeddings']
 
@@ -61,20 +62,122 @@ const providerIcons = [
   Xinference,
 ]
 
+type HomeHeroOverrides = {
+  titleTop?: string
+  titleBottom?: string
+  subtitle?: string
+  serverAddress?: string
+  endpoints?: string[]
+  primaryButtonText?: string
+  primaryButtonUrl?: string
+  secondaryButtonText?: string
+  secondaryButtonUrl?: string
+  providersTitle?: string
+}
+
+function parseHomeHeroOverrides(content: string): HomeHeroOverrides {
+  const trimmed = content.trim()
+  if (!trimmed) return {}
+
+  try {
+    const parsed = JSON.parse(trimmed)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const endpoints = Array.isArray(parsed.endpoints)
+        ? parsed.endpoints.filter(
+            (value): value is string =>
+              typeof value === 'string' && value.trim().length > 0
+          )
+        : undefined
+
+      return {
+        titleTop:
+          typeof parsed.titleTop === 'string' ? parsed.titleTop.trim() : '',
+        titleBottom:
+          typeof parsed.titleBottom === 'string'
+            ? parsed.titleBottom.trim()
+            : '',
+        subtitle:
+          typeof parsed.subtitle === 'string' ? parsed.subtitle.trim() : '',
+        serverAddress:
+          typeof parsed.serverAddress === 'string'
+            ? parsed.serverAddress.trim()
+            : '',
+        endpoints,
+        primaryButtonText:
+          typeof parsed.primaryButtonText === 'string'
+            ? parsed.primaryButtonText.trim()
+            : '',
+        primaryButtonUrl:
+          typeof parsed.primaryButtonUrl === 'string'
+            ? parsed.primaryButtonUrl.trim()
+            : '',
+        secondaryButtonText:
+          typeof parsed.secondaryButtonText === 'string'
+            ? parsed.secondaryButtonText.trim()
+            : '',
+        secondaryButtonUrl:
+          typeof parsed.secondaryButtonUrl === 'string'
+            ? parsed.secondaryButtonUrl.trim()
+            : '',
+        providersTitle:
+          typeof parsed.providersTitle === 'string'
+            ? parsed.providersTitle.trim()
+            : '',
+      }
+    }
+  } catch {
+    // Fall back to plain text line mapping for quick admin edits.
+  }
+
+  const lines = trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  return {
+    titleTop: lines[0] ?? '',
+    titleBottom: lines[1] ?? '',
+    subtitle: lines[2] ?? '',
+    providersTitle: lines[3] ?? '',
+  }
+}
+
 export function LegacyHome() {
   const { t } = useTranslation()
   const { status } = useStatus()
   const { systemName, logo, logoLoaded } = useSystemConfig()
+  const { content: homePageContent } = useHomePageContent()
   const [endpointIndex, setEndpointIndex] = useState(0)
+  const heroOverrides = useMemo(
+    () => parseHomeHeroOverrides(homePageContent),
+    [homePageContent]
+  )
   const serverAddress = useMemo(
     () =>
+      heroOverrides.serverAddress ||
       (status?.server_address as string | undefined) ||
       `${window.location.origin}`,
-    [status?.server_address]
+    [heroOverrides.serverAddress, status?.server_address]
   )
   const docsLink =
     (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
-  const endpoint = endpoints[endpointIndex % endpoints.length]
+  const displayEndpoints =
+    heroOverrides.endpoints?.length ? heroOverrides.endpoints : endpoints
+  const endpoint = displayEndpoints[endpointIndex % displayEndpoints.length]
+  const titleTop = heroOverrides.titleTop || t('Unified')
+  const titleBottom =
+    heroOverrides.titleBottom || t('Large Model API Gateway')
+  const subtitle =
+    heroOverrides.subtitle ||
+    t('Access multiple models by only replacing the base URL:')
+  const primaryButtonText = heroOverrides.primaryButtonText || t('Get API Key')
+  const primaryButtonUrl = heroOverrides.primaryButtonUrl || '/enterprise'
+  const secondaryButtonText = heroOverrides.secondaryButtonText || t('Docs')
+  const secondaryButtonUrl = heroOverrides.secondaryButtonUrl || docsLink
+  const providersTitle =
+    heroOverrides.providersTitle || t('Supports many large model providers')
+  const primaryButtonIsExternal = /^https?:\/\//i.test(primaryButtonUrl)
+  const secondaryButtonIsExternal = /^https?:\/\//i.test(secondaryButtonUrl)
   const footerColumns = [
     {
       title: '',
@@ -200,15 +303,15 @@ export function LegacyHome() {
           <div className='mx-auto flex max-w-5xl flex-col items-center text-center'>
             <h1 className='relative text-[clamp(3rem,7vw,6rem)] leading-[0.96] font-black tracking-tight drop-shadow-[0_12px_40px_rgba(59,130,246,0.18)]'>
               <span className='bg-gradient-to-br from-slate-950 via-violet-700 via-45% to-rose-600 bg-[length:170%_100%] bg-clip-text text-transparent dark:from-white dark:via-fuchsia-200 dark:to-rose-200'>
-                {t('Unified')}
+                {titleTop}
               </span>
               <br />
               <span className='bg-gradient-to-r from-blue-600 via-cyan-500 via-45% to-orange-500 bg-[length:190%_100%] bg-clip-text text-transparent dark:from-blue-300 dark:via-cyan-200 dark:to-orange-200'>
-                {t('Large Model API Gateway')}
+                {titleBottom}
               </span>
             </h1>
             <p className='mt-7 text-lg text-slate-600 md:text-xl dark:text-slate-300'>
-              {t('Access multiple models by only replacing the base URL:')}
+              {subtitle}
             </p>
 
             <div className='mt-7 flex w-full max-w-xl items-center gap-3 rounded-full border border-white/70 bg-white/65 px-4 py-2 text-left shadow-[0_18px_60px_-28px_rgba(14,165,233,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/65'>
@@ -238,27 +341,45 @@ export function LegacyHome() {
               <Button
                 size='lg'
                 className='h-12 rounded-full bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500 px-7 text-base font-bold shadow-[0_16px_36px_-18px_rgba(37,99,235,0.9)] hover:opacity-95'
-                render={<Link to='/enterprise' />}
+                render={
+                  primaryButtonIsExternal ? (
+                    <a
+                      href={primaryButtonUrl}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                    />
+                  ) : (
+                    <Link to={primaryButtonUrl} />
+                  )
+                }
               >
                 <Play data-icon='inline-start' />
-                {t('Get API Key')}
+                {primaryButtonText}
               </Button>
               <Button
                 variant='outline'
                 size='lg'
                 className='h-12 rounded-full border-white/70 bg-white/60 px-6 text-base font-bold shadow-[0_16px_36px_-24px_rgba(14,165,233,0.75)] backdrop-blur hover:bg-white/80 dark:border-white/15 dark:bg-white/10 dark:hover:bg-white/15'
                 render={
-                  <a href={docsLink} target='_blank' rel='noopener noreferrer' />
+                  secondaryButtonIsExternal ? (
+                    <a
+                      href={secondaryButtonUrl}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                    />
+                  ) : (
+                    <Link to={secondaryButtonUrl} />
+                  )
                 }
               >
                 <FileText data-icon='inline-start' />
-                {t('Docs')}
+                {secondaryButtonText}
               </Button>
             </div>
 
             <div className='mt-24 w-full'>
               <p className='bg-gradient-to-r from-slate-500 via-sky-600 to-violet-600 bg-clip-text text-xl text-transparent md:text-2xl dark:from-slate-300 dark:via-cyan-200 dark:to-fuchsia-300'>
-                {t('Supports many large model providers')}
+                {providersTitle}
               </p>
               <div className='mx-auto mt-9 flex max-w-4xl flex-wrap items-center justify-center gap-7 rounded-[2rem] bg-white/30 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur md:gap-10 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'>
                 {providerIcons.map((Icon, index) => (

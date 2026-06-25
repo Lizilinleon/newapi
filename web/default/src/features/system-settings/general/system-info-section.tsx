@@ -518,14 +518,18 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                       <FormLabel>{t('Home Page Content')}</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder={t('Welcome to our New API...')}
-                          rows={6}
+                          placeholder={`{
+  "titleTop": "统一的",
+  "titleBottom": "大模型接口网关",
+  "subtitle": "多模型统一接入，只需将基址替换为："
+}`}
+                          rows={8}
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
                         {t(
-                          'Content displayed on the home page (supports Markdown)'
+                          'Use plain text lines to override the hero title/subtitle, or provide JSON fields such as titleTop, titleBottom, subtitle, serverAddress, endpoints, primaryButtonText, primaryButtonUrl, secondaryButtonText, secondaryButtonUrl, and providersTitle.'
                         )}
                       </FormDescription>
                       <FormMessage />

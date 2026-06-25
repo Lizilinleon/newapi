@@ -34,8 +34,10 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useAuthStore } from '@/stores/auth-store'
 import { type SidebarData } from '@/components/layout/types'
 import { getEnterpriseSummary } from '@/features/enterprise/api'
+import { ROLE } from '@/lib/roles'
 
 /**
  * Root navigation groups for the application sidebar.
@@ -45,11 +47,13 @@ import { getEnterpriseSummary } from '@/features/enterprise/api'
  */
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
+  const userRole = useAuthStore((state) => state.auth.user?.role ?? 0)
   const enterpriseSummaryQuery = useQuery({
     queryKey: ['enterprise', 'summary'],
     queryFn: getEnterpriseSummary,
     staleTime: 30_000,
   })
+  const isSuperAdmin = userRole === ROLE.SUPER_ADMIN
   const isEnterpriseMember =
     enterpriseSummaryQuery.data?.success &&
     enterpriseSummaryQuery.data.data?.mode === 'member'
@@ -118,24 +122,28 @@ export function useSidebarData(): SidebarData {
           },
         ],
       },
-      {
-        id: 'service',
-        title: t('Service'),
-        items: [
-          {
-            title: t('Enterprise'),
-            icon: Building2,
-            defaultOpen: true,
-            items: enterpriseItems,
-          },
-          {
-            title: t('Personal'),
-            icon: User,
-            defaultOpen: true,
-            items: personalServiceItems,
-          },
-        ],
-      },
+      ...(!isSuperAdmin
+        ? [
+            {
+              id: 'service',
+              title: t('Service'),
+              items: [
+                {
+                  title: t('Enterprise'),
+                  icon: Building2,
+                  defaultOpen: true,
+                  items: enterpriseItems,
+                },
+                {
+                  title: t('Personal'),
+                  icon: User,
+                  defaultOpen: true,
+                  items: personalServiceItems,
+                },
+              ],
+            },
+          ]
+        : []),
       {
         id: 'settings',
         title: t('Settings'),
