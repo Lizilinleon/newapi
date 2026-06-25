@@ -57,6 +57,7 @@
     "7 days ago": "7日前",
     "80,443,8080": "80,443,8080",
     "? This action cannot be undone.": "? この操作は元に戻せません。",
+    "? {{count}} ???": "?? {{count}} ?????",
     "@lobehub/icons key": "@lobehub/icons キー",
     "@lobehub/icons key name": "@lobehub/icons キー名",
     "A billing multiplier. Lower ratios mean lower API call costs.": "課金倍率です。倍率が低いほど API 呼び出しコストは低くなります。",
@@ -2456,6 +2457,7 @@
     "Must be a valid URL": "有効な URL を入力してください",
     "Must be at least 8 characters": "8文字以上である必要があります",
     "My Subscriptions": "マイサブスクリプション",
+    "My company-billed API keys": "???????? API ??",
     "My organization": "?????",
     "MySQL detected": "MySQLが検出されました",
     "MySQL is a production-ready relational database. Keep your credentials secure.": "MySQL は本番環境対応のリレーショナルデータベースです。認証情報を安全に管理してください。",
@@ -3991,6 +3993,7 @@
     "The bound Store is the parent container for every Pancake product new-api creates from this admin — both the wallet top-up product and any subscription-plan products. One store is enough; pin a different one only if you genuinely run separate Pancake catalogs.": "紐付け済みストアは、この管理画面から new-api が作成するすべての Pancake 商品の親コンテナです。ウォレットチャージ商品とサブスクリプションプラン商品が含まれます。通常は 1 つのストアで十分です。別々の Pancake カタログを本当に運用する場合のみ別のストアを固定してください。",
     "The effective domain for Passkey registration. Must match the current domain or be its parent domain.": "Passkey登録のための有効なドメイン。現在のドメインまたはその親ドメインと一致する必要があります。",
     "The entered text does not match the required text.": "入力したテキストが必要なテキストと一致しません。",
+    "The enterprise owner member account was not found.": "?????????????????????????????",
     "The environment (test vs production) is decided by the key you paste here — use the Test key while integrating, then swap to the Production key when going live.": "環境（テスト/本番）はここに貼り付けるキーで決まります。統合中はテストキーを使用し、本番公開時に本番キーへ切り替えてください。",
     "The exact model identifier as used in API requests.": "APIリクエストで使用される正確なモデル識別子。",
     "The following models have billing type conflicts (fixed price vs ratio billing). Confirm to proceed with the changes.": "以下のモデルには請求タイプ（固定価格 vs 比率請求）の競合があります。変更を続行するには確認してください。",
@@ -4015,6 +4018,7 @@
     "Theme preset": "テーマプリセット",
     "There are both add and remove models pending, but you only selected one type. Confirm submitting only the selected items?": "追加と削除の両方のモデルが保留中ですが、一方のタイプのみ選択されています。選択した項目のみ送信してよろしいですか？",
     "There is remaining balance or unused allocated quota.": "残高または未使用の割当額があります。",
+    "These API keys belong to the enterprise owner account and are charged to the company balance.": "???? API ???????????????????????????????",
     "These models are still in your selection but were not returned by the upstream listing. Entries that are only model_mapping source aliases are omitted. Toggle to adjust before saving.": "これらはまだ選択中ですが上流のリストにありません。model_mapping にのみソース別名として載る名前は除外されています。保存前に選択を調整してください。",
     "These toggles affect whether certain request fields are passed through to the upstream provider.": "これらの切り替えは、特定の要求フィールドがアップストリームプロバイダーに渡されるかどうかに影響します。",
     "Thinking Suffix Adapter": "思考サフィックスアダプター",
@@ -4875,6 +4879,9 @@
     "、": ", ",
     "，": ", ",
     "，and ": ", and ",
-    "? {{count}} ???": "?? {{count}} ?????"
+    "Support": "サポート",
+    "API Reference": "API リファレンス",
+    "Enterprise-ready large model gateway for unified model access.": "統一されたモデルアクセスのためのエンタープライズ対応大規模モデルゲートウェイ。",
+    "Stable routing, account management, billing control, and compliance-ready access experience.": "安定したルーティング、アカウント管理、請求制御、そしてコンプライアンス対応のアクセス体験。"
   }
 }

@@ -57,6 +57,7 @@
     "7 days ago": "Il y a 7 jours",
     "80,443,8080": "80,443,8080",
     "? This action cannot be undone.": "? Cette action ne peut pas être annulée.",
+    "? {{count}} ???": "{{count}} mod?les au total",
     "@lobehub/icons key": "@lobehub/icons clé",
     "@lobehub/icons key name": "@lobehub/icons nom de la clé",
     "A billing multiplier. Lower ratios mean lower API call costs.": "Un multiplicateur de facturation. Plus le ratio est faible, plus le coût des appels API est bas.",
@@ -2456,6 +2457,7 @@
     "Must be a valid URL": "Doit être une URL valide",
     "Must be at least 8 characters": "Doit contenir au moins 8 caractères",
     "My Subscriptions": "Mes abonnements",
+    "My company-billed API keys": "Mes cl?s API factur?es ? l?entreprise",
     "My organization": "Mon entreprise",
     "MySQL detected": "MySQL détecté",
     "MySQL is a production-ready relational database. Keep your credentials secure.": "MySQL est une base de données relationnelle prête pour la production. Gardez vos identifiants en sécurité.",
@@ -3991,6 +3993,7 @@
     "The bound Store is the parent container for every Pancake product new-api creates from this admin — both the wallet top-up product and any subscription-plan products. One store is enough; pin a different one only if you genuinely run separate Pancake catalogs.": "La boutique associée est le conteneur parent de tous les produits Pancake que new-api crée depuis cette administration, y compris le produit de recharge de portefeuille et les produits de forfaits d’abonnement. Une seule boutique suffit ; choisissez-en une autre uniquement si vous gérez réellement des catalogues Pancake séparés.",
     "The effective domain for Passkey registration. Must match the current domain or be its parent domain.": "Le domaine effectif pour l'enregistrement de la clé d'accès. Doit correspondre au domaine actuel ou être son domaine parent.",
     "The entered text does not match the required text.": "Le texte saisi ne correspond pas au texte requis.",
+    "The enterprise owner member account was not found.": "Le compte membre du propri?taire de l?entreprise est introuvable.",
     "The environment (test vs production) is decided by the key you paste here — use the Test key while integrating, then swap to the Production key when going live.": "L’environnement (test ou production) est déterminé par la clé collée ici : utilisez la clé de test pendant l’intégration, puis remplacez-la par la clé de production lors de la mise en ligne.",
     "The exact model identifier as used in API requests.": "L'identifiant exact du modèle tel qu'utilisé dans les requêtes API.",
     "The following models have billing type conflicts (fixed price vs ratio billing). Confirm to proceed with the changes.": "Les modèles suivants présentent des conflits de type de facturation (prix fixe vs facturation au ratio). Confirmez pour procéder aux changements.",
@@ -4015,6 +4018,7 @@
     "Theme preset": "Préréglage du thème",
     "There are both add and remove models pending, but you only selected one type. Confirm submitting only the selected items?": "Il y a à la fois des modèles à ajouter et à supprimer, mais vous n'avez sélectionné qu'un seul type. Confirmer l'envoi uniquement des éléments sélectionnés ?",
     "There is remaining balance or unused allocated quota.": "Il reste un solde ou un quota attribué inutilisé.",
+    "These API keys belong to the enterprise owner account and are charged to the company balance.": "Ces cl?s API appartiennent au compte propri?taire de l?entreprise et sont d?bit?es du solde de l?entreprise.",
     "These models are still in your selection but were not returned by the upstream listing. Entries that are only model_mapping source aliases are omitted. Toggle to adjust before saving.": "Ces modèles restent encore sélectionnés mais ne figurent pas dans la liste renvoyée par l'amont ; les noms qui sont uniquement des clés sources de model_mapping sont exclus. Modifiez la sélection avant d'enregistrer.",
     "These toggles affect whether certain request fields are passed through to the upstream provider.": "Ces bascules déterminent si certains champs de demande sont transmis au fournisseur en amont.",
     "Thinking Suffix Adapter": "Adaptateur de suffixe thinking",
@@ -4875,6 +4879,9 @@
     "、": ", ",
     "，": ", ",
     "，and ": ", and ",
-    "? {{count}} ???": "{{count}} mod?les au total"
+    "Support": "Support",
+    "API Reference": "Référence API",
+    "Enterprise-ready large model gateway for unified model access.": "Passerelle de grands modèles prête pour l'entreprise pour un accès unifié aux modèles.",
+    "Stable routing, account management, billing control, and compliance-ready access experience.": "Routage stable, gestion des comptes, contrôle de la facturation et expérience d'accès adaptée à la conformité."
   }
 }

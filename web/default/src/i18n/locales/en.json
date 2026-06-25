@@ -57,6 +57,7 @@
     "7 days ago": "7 days ago",
     "80,443,8080": "80,443,8080",
     "? This action cannot be undone.": "? This action cannot be undone.",
+    "? {{count}} ???": "Total {{count}} models",
     "@lobehub/icons key": "@lobehub/icons key",
     "@lobehub/icons key name": "@lobehub/icons key name",
     "A billing multiplier. Lower ratios mean lower API call costs.": "A billing multiplier. Lower ratios mean lower API call costs.",
@@ -2456,6 +2457,7 @@
     "Must be a valid URL": "Must be a valid URL",
     "Must be at least 8 characters": "Must be at least 8 characters",
     "My Subscriptions": "My Subscriptions",
+    "My company-billed API keys": "My company-billed API keys",
     "My organization": "My enterprise",
     "MySQL detected": "MySQL detected",
     "MySQL is a production-ready relational database. Keep your credentials secure.": "MySQL is a production-ready relational database. Keep your credentials secure.",
@@ -3991,6 +3993,7 @@
     "The bound Store is the parent container for every Pancake product new-api creates from this admin — both the wallet top-up product and any subscription-plan products. One store is enough; pin a different one only if you genuinely run separate Pancake catalogs.": "The bound Store is the parent container for every Pancake product new-api creates from this admin — both the wallet top-up product and any subscription-plan products. One store is enough; pin a different one only if you genuinely run separate Pancake catalogs.",
     "The effective domain for Passkey registration. Must match the current domain or be its parent domain.": "The effective domain for Passkey registration. Must match the current domain or be its parent domain.",
     "The entered text does not match the required text.": "The entered text does not match the required text.",
+    "The enterprise owner member account was not found.": "The enterprise owner member account was not found.",
     "The environment (test vs production) is decided by the key you paste here — use the Test key while integrating, then swap to the Production key when going live.": "The environment (test vs production) is decided by the key you paste here — use the Test key while integrating, then swap to the Production key when going live.",
     "The exact model identifier as used in API requests.": "The exact model identifier as used in API requests.",
     "The following models have billing type conflicts (fixed price vs ratio billing). Confirm to proceed with the changes.": "The following models have billing type conflicts (fixed price vs ratio billing). Confirm to proceed with the changes.",
@@ -4015,6 +4018,7 @@
     "Theme preset": "Theme preset",
     "There are both add and remove models pending, but you only selected one type. Confirm submitting only the selected items?": "There are both add and remove models pending, but you only selected one type. Confirm submitting only the selected items?",
     "There is remaining balance or unused allocated quota.": "There is remaining balance or unused allocated quota.",
+    "These API keys belong to the enterprise owner account and are charged to the company balance.": "These API keys belong to the enterprise owner account and are charged to the company balance.",
     "These models are still in your selection but were not returned by the upstream listing. Entries that are only model_mapping source aliases are omitted. Toggle to adjust before saving.": "These models are still in your selection but were not returned by the upstream listing. Entries that are only model_mapping source aliases are omitted. Toggle to adjust before saving.",
     "These toggles affect whether certain request fields are passed through to the upstream provider.": "These toggles affect whether certain request fields are passed through to the upstream provider.",
     "Thinking Suffix Adapter": "Thinking Suffix Adapter",
@@ -4875,6 +4879,9 @@
     "、": ", ",
     "，": ", ",
     "，and ": ", and ",
-    "? {{count}} ???": "Total {{count}} models"
+    "Support": "Support",
+    "API Reference": "API Reference",
+    "Enterprise-ready large model gateway for unified model access.": "Enterprise-ready large model gateway for unified model access.",
+    "Stable routing, account management, billing control, and compliance-ready access experience.": "Stable routing, account management, billing control, and compliance-ready access experience."
   }
 }

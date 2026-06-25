@@ -57,6 +57,7 @@
     "7 days ago": "7 ngày trước",
     "80,443,8080": "80,443,8080",
     "? This action cannot be undone.": "? Hành động này không thể hoàn tác.",
+    "? {{count}} ???": "T?ng c?ng {{count}} m? h?nh",
     "@lobehub/icons key": "@lobehub/icons khóa",
     "@lobehub/icons key name": "@lobehub/icons tên khóa",
     "A billing multiplier. Lower ratios mean lower API call costs.": "Hệ số tính phí. Tỷ lệ càng thấp thì chi phí gọi API càng thấp.",
@@ -2456,6 +2457,7 @@
     "Must be a valid URL": "Phải là URL hợp lệ",
     "Must be at least 8 characters": "Phải có ít nhất 8 ký tự",
     "My Subscriptions": "Gói đăng ký của tôi",
+    "My company-billed API keys": "Kh?a API c?a t?i t?nh ph? c?ng ty",
     "My organization": "Doanh nghi?p c?a t?i",
     "MySQL detected": "Đã phát hiện MySQL",
     "MySQL is a production-ready relational database. Keep your credentials secure.": "MySQL là cơ sở dữ liệu quan hệ sẵn sàng cho production. Hãy giữ thông tin đăng nhập an toàn.",
@@ -3991,6 +3993,7 @@
     "The bound Store is the parent container for every Pancake product new-api creates from this admin — both the wallet top-up product and any subscription-plan products. One store is enough; pin a different one only if you genuinely run separate Pancake catalogs.": "Cửa hàng đã liên kết là vùng chứa cha cho mọi sản phẩm Pancake mà new-api tạo từ trang quản trị này — bao gồm sản phẩm nạp ví và mọi sản phẩm gói đăng ký. Một cửa hàng là đủ; chỉ ghim cửa hàng khác nếu bạn thực sự vận hành các catalog Pancake riêng.",
     "The effective domain for Passkey registration. Must match the current domain or be its parent domain.": "Mi",
     "The entered text does not match the required text.": "Văn bản đã nhập không khớp với văn bản yêu cầu.",
+    "The enterprise owner member account was not found.": "Kh?ng t?m th?y t?i kho?n th?nh vi?n t??ng ?ng v?i ch? doanh nghi?p.",
     "The environment (test vs production) is decided by the key you paste here — use the Test key while integrating, then swap to the Production key when going live.": "Môi trường (test hay production) được quyết định bởi khóa bạn dán tại đây — dùng khóa Test khi tích hợp, sau đó đổi sang khóa Production khi chạy chính thức.",
     "The exact model identifier as used in API requests.": "Mã định danh mô hình chính xác như được sử dụng trong các yêu cầu API.",
     "The following models have billing type conflicts (fixed price vs ratio billing). Confirm to proceed with the changes.": "Các mô hình sau có xung đột loại thanh toán (giá cố định so với thanh toán theo tỷ lệ). Xác nhận để tiếp tục với các thay đổi.",
@@ -4015,6 +4018,7 @@
     "Theme preset": "Tùy chỉnh chủ đề",
     "There are both add and remove models pending, but you only selected one type. Confirm submitting only the selected items?": "Có cả mô hình cần thêm và xóa đang chờ, nhưng bạn chỉ chọn một loại. Xác nhận chỉ gửi các mục đã chọn?",
     "There is remaining balance or unused allocated quota.": "V?n c?n s? d? ho?c h?n m?c ???c ph?n b? ch?a d?ng.",
+    "These API keys belong to the enterprise owner account and are charged to the company balance.": "C?c kh?a API n?y thu?c v? t?i kho?n ch? doanh nghi?p v? ???c tr? v?o s? d? c?ng ty.",
     "These models are still in your selection but were not returned by the upstream listing. Entries that are only model_mapping source aliases are omitted. Toggle to adjust before saving.": "Các model này vẫn được chọn nhưng không còn xuất hiện trong danh sách upstream; tên chỉ là khóa nguồn trong model_mapping đã được loại. Điều chỉnh trước khi lưu.",
     "These toggles affect whether certain request fields are passed through to the upstream provider.": "Các chuyển đổi này ảnh hưởng đến việc các trường yêu cầu nhất định có được chuyển đến nhà cung cấp dịch vụ đầu vào hay không.",
     "Thinking Suffix Adapter": "Adapter hậu tố thinking",
@@ -4875,6 +4879,9 @@
     "、": ", ",
     "，": ", ",
     "，and ": ", and ",
-    "? {{count}} ???": "T?ng c?ng {{count}} m? h?nh"
+    "Support": "Hỗ trợ",
+    "API Reference": "Tài liệu tham khảo API",
+    "Enterprise-ready large model gateway for unified model access.": "Cổng mô hình lớn sẵn sàng cho doanh nghiệp để truy cập mô hình thống nhất.",
+    "Stable routing, account management, billing control, and compliance-ready access experience.": "Định tuyến ổn định, quản lý tài khoản, kiểm soát thanh toán và trải nghiệm truy cập sẵn sàng cho tuân thủ."
   }
 }

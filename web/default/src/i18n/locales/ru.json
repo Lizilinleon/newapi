@@ -57,6 +57,7 @@
     "7 days ago": "7 дней назад",
     "80,443,8080": "80,443,8080",
     "? This action cannot be undone.": "? Это действие невозможно отменить.",
+    "? {{count}} ???": "????? ???????: {{count}}",
     "@lobehub/icons key": "Ключ @lobehub/icons",
     "@lobehub/icons key name": "Имя ключа @lobehub/icons",
     "A billing multiplier. Lower ratios mean lower API call costs.": "Множитель тарификации. Чем ниже коэффициент, тем ниже стоимость вызовов API.",
@@ -2456,6 +2457,7 @@
     "Must be a valid URL": "Должен быть действительный URL",
     "Must be at least 8 characters": "Должно быть не менее 8 символов",
     "My Subscriptions": "Мои подписки",
+    "My company-billed API keys": "??? API-????? ? ??????? ?????????",
     "My organization": "??? ???????????",
     "MySQL detected": "Обнаружен MySQL",
     "MySQL is a production-ready relational database. Keep your credentials secure.": "MySQL — реляционная база данных, готовая к продакшену. Храните учётные данные в безопасности.",
@@ -3991,6 +3993,7 @@
     "The bound Store is the parent container for every Pancake product new-api creates from this admin — both the wallet top-up product and any subscription-plan products. One store is enough; pin a different one only if you genuinely run separate Pancake catalogs.": "Привязанный магазин является родительским контейнером для всех продуктов Pancake, которые new-api создает из этой админки: как продукта пополнения кошелька, так и продуктов планов подписки. Одного магазина достаточно; выбирайте другой только если действительно ведете отдельные каталоги Pancake.",
     "The effective domain for Passkey registration. Must match the current domain or be its parent domain.": "Действующий домен для регистрации Passkey. Должен совпадать с текущим доменом или быть его родительским доменом.",
     "The entered text does not match the required text.": "Введенный текст не совпадает с требуемым.",
+    "The enterprise owner member account was not found.": "??????? ?????? ????????? ??? ????????? ??????????? ?? ???????.",
     "The environment (test vs production) is decided by the key you paste here — use the Test key while integrating, then swap to the Production key when going live.": "Окружение (тестовое или рабочее) определяется ключом, который вы вставляете здесь: используйте тестовый ключ при интеграции, затем замените его на рабочий при запуске.",
     "The exact model identifier as used in API requests.": "Точный идентификатор модели, используемый в запросах API.",
     "The following models have billing type conflicts (fixed price vs ratio billing). Confirm to proceed with the changes.": "Следующие модели имеют конфликты типов тарификации (фиксированная цена против тарификации по соотношению). Подтвердите, чтобы продолжить изменения.",
@@ -4015,6 +4018,7 @@
     "Theme preset": "Пресет темы",
     "There are both add and remove models pending, but you only selected one type. Confirm submitting only the selected items?": "Есть модели для добавления и удаления, но вы выбрали только один тип. Подтвердить отправку только выбранных элементов?",
     "There is remaining balance or unused allocated quota.": "Есть остаток или неиспользованная выделенная квота.",
+    "These API keys belong to the enterprise owner account and are charged to the company balance.": "??? API-????? ??????????? ??????? ?????? ????????? ??????????? ? ??????????? ? ??????? ????????.",
     "These models are still in your selection but were not returned by the upstream listing. Entries that are only model_mapping source aliases are omitted. Toggle to adjust before saving.": "Эти имена всё ещё отмечены в выборе, но не возвращены в списке upstream; ключи только как источники model_mapping исключены. Скорректируйте выбор перед сохранением.",
     "These toggles affect whether certain request fields are passed through to the upstream provider.": "Эти переключатели влияют на то, передаются ли определенные поля запроса вышестоящему поставщику.",
     "Thinking Suffix Adapter": "Адаптер суффикса thinking",
@@ -4875,6 +4879,9 @@
     "、": ", ",
     "，": ", ",
     "，and ": ", and ",
-    "? {{count}} ???": "????? ???????: {{count}}"
+    "Support": "Поддержка",
+    "API Reference": "Справочник API",
+    "Enterprise-ready large model gateway for unified model access.": "Корпоративный шлюз больших моделей для унифицированного доступа к моделям.",
+    "Stable routing, account management, billing control, and compliance-ready access experience.": "Стабильная маршрутизация, управление аккаунтами, контроль биллинга и готовый к требованиям соответствия доступ."
   }
 }
