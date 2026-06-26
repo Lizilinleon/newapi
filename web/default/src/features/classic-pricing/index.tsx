@@ -79,8 +79,7 @@ function PricingHeader() {
   const { t } = useTranslation()
   const { status } = useStatus()
   const { systemName, logo, logoLoaded } = useSystemConfig()
-  const docsLink =
-    (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
+  const docsLink = (status?.docs_link as string | undefined) || '/about'
 
   return (
     <header className='classic-pricing-header fixed inset-x-0 top-0 z-50 border-b border-white/40 bg-white/68 shadow-[0_12px_44px_-28px_rgba(14,165,233,0.95)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/58 dark:shadow-none'>

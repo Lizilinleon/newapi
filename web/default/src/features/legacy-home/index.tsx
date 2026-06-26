@@ -159,8 +159,7 @@ export function LegacyHome() {
       `${window.location.origin}`,
     [heroOverrides.serverAddress, status?.server_address]
   )
-  const docsLink =
-    (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
+  const docsLink = (status?.docs_link as string | undefined) || '/about'
   const displayEndpoints =
     heroOverrides.endpoints?.length ? heroOverrides.endpoints : endpoints
   const endpoint = displayEndpoints[endpointIndex % displayEndpoints.length]
@@ -179,20 +178,6 @@ export function LegacyHome() {
   const primaryButtonIsExternal = /^https?:\/\//i.test(primaryButtonUrl)
   const secondaryButtonIsExternal = /^https?:\/\//i.test(secondaryButtonUrl)
   const footerColumns = [
-    {
-      title: '',
-      links: [
-        { text: t('About'), href: '/about' },
-        { text: t('Docs'), href: docsLink },
-      ],
-    },
-    {
-      title: '',
-      links: [
-        { text: t('API Reference'), href: docsLink },
-        { text: t('Get API Key'), href: '/sign-up' },
-      ],
-    },
     {
       title: '',
       links: [

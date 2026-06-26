@@ -46,8 +46,7 @@ const MoreIcon = () => (
 export function Hero(_props: HeroProps) {
   const { t } = useTranslation()
   const { status } = useStatus()
-  const docsUrl =
-    (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
+  const docsUrl = (status?.docs_link as string | undefined) || '/about'
 
   const renderDocsButton = () => {
     const isExternal = docsUrl.startsWith('http')
@@ -156,7 +155,7 @@ export function Hero(_props: HeroProps) {
               </span>
               <p className='text-muted-foreground/60 text-xs leading-relaxed'>
                 {t(
-                  'Supports one-click configuration and perfectly adapts to NewAPI multi-protocol configuration.'
+                  'Supports one-click configuration and adapts to multi-protocol API gateway settings.'
                 )}
               </p>
             </div>

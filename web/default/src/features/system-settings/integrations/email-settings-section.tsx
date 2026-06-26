@@ -40,6 +40,7 @@ import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useResetForm } from '../hooks/use-reset-form'
 import { useUpdateOption } from '../hooks/use-update-option'
+import { useSystemConfig } from '@/hooks/use-system-config'
 
 const createEmailSchema = (t: (key: string) => string) =>
   z.object({
@@ -70,6 +71,7 @@ export function EmailSettingsSection({
   defaultValues,
 }: EmailSettingsSectionProps) {
   const { t } = useTranslation()
+  const { systemName } = useSystemConfig()
   const updateOption = useUpdateOption()
   const emailSchema = createEmailSchema(t)
 
@@ -271,7 +273,7 @@ export function EmailSettingsSection({
                 <FormControl>
                   <Input
                     autoComplete='off'
-                    placeholder={t('New API &lt;noreply@example.com&gt;')}
+                    placeholder={`${systemName} <noreply@example.com>`}
                     {...field}
                     onChange={(event) => field.onChange(event.target.value)}
                   />

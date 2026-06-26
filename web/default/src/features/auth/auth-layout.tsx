@@ -35,8 +35,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
   const { t } = useTranslation()
   const { status } = useStatus()
   const { systemName, logo, loading, logoLoaded } = useSystemConfig()
-  const docsLink =
-    (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
+  const docsLink = (status?.docs_link as string | undefined) || '/about'
 
   const navLinkClass =
     'rounded-full px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:bg-gradient-to-r hover:text-blue-800 dark:text-slate-300 dark:hover:text-cyan-100'

@@ -49,6 +49,7 @@ func TestMain(m *testing.M) {
 		&UserOAuthBinding{},
 		&PerfMetric{},
 		&EnterpriseAccount{},
+		&EnterpriseAccountRelation{},
 		&EnterpriseMember{},
 		&EnterpriseQuotaAllocation{},
 		&SystemTask{},
@@ -76,6 +77,7 @@ func truncateTables(t *testing.T) {
 		DB.Exec("DELETE FROM user_oauth_bindings")
 		DB.Exec("DELETE FROM perf_metrics")
 		DB.Exec("DELETE FROM enterprise_accounts")
+		DB.Exec("DELETE FROM enterprise_account_relations")
 		DB.Exec("DELETE FROM enterprise_members")
 		DB.Exec("DELETE FROM enterprise_quota_allocations")
 		DB.Exec("DELETE FROM system_tasks")

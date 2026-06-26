@@ -2,6 +2,8 @@
 
 本文汇总当前开发版相对基础 new-api 已新增或改造的企业、成员、资金、API Key 与管理员能力。文档已同步到当前实现状态。
 
+文档层级：`docs/README.md` -> 本文作为企业模块总览。企业入口/注册细节见 `enterprise-entry-and-registration.md`，API Key 与资金细节见 `enterprise-api-key-management.md`，未完成事项见 `enterprise-todo-report.md`。
+
 ## 1. 总体定位
 
 当前版本在保留原有模型渠道、统一 API 转发、API Key、日志、计费和用户系统的基础上，新增了企业/团队/家庭场景的资金池和成员 API Key 管理能力。

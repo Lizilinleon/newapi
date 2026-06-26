@@ -26,6 +26,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
+import { DEFAULT_SYSTEM_NAME } from '@/lib/constants'
 
 type SystemBrandProps = {
   defaultName?: string
@@ -50,7 +51,7 @@ export function SystemBrand(props: SystemBrandProps) {
   const { logo } = useSystemConfig()
 
   const variant = props.variant ?? 'sidebar'
-  const name = status?.system_name || props.defaultName || 'New API'
+  const name = status?.system_name || props.defaultName || DEFAULT_SYSTEM_NAME
   const version =
     status?.version || props.defaultVersion || t('Unknown version')
 

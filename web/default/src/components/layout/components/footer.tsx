@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { DEFAULT_SYSTEM_NAME } from '@/lib/constants'
 
 interface FooterLink {
   text: string
@@ -44,12 +45,6 @@ interface FooterProps {
   centered?: boolean
 }
 
-const NEW_API_FOOTER_ATTRIBUTION_KEY = [
-  'footer',
-  'new' + 'api',
-  'projectAttributionSuffix',
-].join('.')
-
 function FooterLinkItem(props: { link: FooterLink }) {
   const { t } = useTranslation()
   const isExternal = props.link.href.startsWith('http')
@@ -61,7 +56,7 @@ function FooterLinkItem(props: { link: FooterLink }) {
         href={props.link.href}
         target='_blank'
         rel='noopener noreferrer'
-        className='text-muted-foreground hover:text-foreground text-lg transition-colors duration-200'
+        className='text-muted-foreground hover:text-foreground text-lg md:text-xl transition-colors duration-200'
       >
         {label}
       </a>
@@ -71,7 +66,7 @@ function FooterLinkItem(props: { link: FooterLink }) {
   return (
     <Link
       to={props.link.href}
-      className='text-muted-foreground hover:text-foreground text-lg transition-colors duration-200'
+      className='text-muted-foreground hover:text-foreground text-lg md:text-xl transition-colors duration-200'
     >
       {label}
     </Link>
@@ -123,34 +118,6 @@ function LegalLinks(props: { leadingSeparator?: boolean }) {
   )
 }
 
-// inline=true returns just the inner span for composition in a parent flex
-// row. inline=false wraps in a centered/right-aligned div (default).
-function ProjectAttribution(props: { currentYear: number; inline?: boolean }) {
-  const { t } = useTranslation()
-  const content = (
-    <span className='text-muted-foreground/45'>
-      &copy; {props.currentYear}{' '}
-      <a
-        href='https://github.com/QuantumNous/new-api'
-        target='_blank'
-        rel='noopener noreferrer'
-        className='text-foreground/70 hover:text-foreground font-medium transition-colors'
-      >
-        {t('New API')}
-      </a>
-      . {t(NEW_API_FOOTER_ATTRIBUTION_KEY)}
-    </span>
-  )
-  if (props.inline) {
-    return content
-  }
-  return (
-    <div className='text-muted-foreground/45 text-center text-xs sm:text-right'>
-      {content}
-    </div>
-  )
-}
-
 export function Footer(props: FooterProps) {
   const { t } = useTranslation()
   const {
@@ -161,7 +128,7 @@ export function Footer(props: FooterProps) {
   } = useSystemConfig()
 
   const displayLogo = systemLogo || props.logo || '/logo.png'
-  const displayName = systemName || props.name || 'New API'
+  const displayName = systemName || props.name || DEFAULT_SYSTEM_NAME
   const descriptionLines = Array.isArray(props.description)
     ? props.description
     : props.description
@@ -179,15 +146,15 @@ export function Footer(props: FooterProps) {
         links: [
           {
             text: t('footer.columns.about.links.aboutProject'),
-            href: 'https://docs.newapi.pro/wiki/project-introduction/',
+            href: '/about',
           },
           {
             text: t('footer.columns.about.links.contact'),
-            href: 'https://docs.newapi.pro/support/community-interaction/',
+            href: '/about',
           },
           {
             text: t('footer.columns.about.links.features'),
-            href: 'https://docs.newapi.pro/wiki/features-introduction/',
+            href: '/pricing',
           },
         ],
       },
@@ -196,15 +163,15 @@ export function Footer(props: FooterProps) {
         links: [
           {
             text: t('footer.columns.docs.links.quickStart'),
-            href: 'https://docs.newapi.pro/getting-started/',
+            href: '/about',
           },
           {
             text: t('footer.columns.docs.links.installation'),
-            href: 'https://docs.newapi.pro/installation/',
+            href: '/about',
           },
           {
             text: t('footer.columns.docs.links.apiDocs'),
-            href: 'https://docs.newapi.pro/api/',
+            href: '/about',
           },
         ],
       },
@@ -220,8 +187,8 @@ export function Footer(props: FooterProps) {
             href: 'https://github.com/novicezk/midjourney-proxy',
           },
           {
-            text: t('footer.columns.related.links.newApiKeyTool'),
-            href: 'https://github.com/Calcium-Ion/new-api-key-tool',
+            text: 'API Keys',
+            href: '/keys',
           },
         ],
       },
@@ -238,10 +205,6 @@ export function Footer(props: FooterProps) {
   const legalRowClassName = inverse
     ? 'text-white/58'
     : 'text-muted-foreground/50'
-  const attributionClassName = inverse
-    ? 'text-white/48'
-    : 'text-muted-foreground/45'
-
   return (
     <footer
       className={cn('border-border/40 relative z-10 border-t', props.className)}
@@ -252,7 +215,9 @@ export function Footer(props: FooterProps) {
             'flex flex-col gap-10',
             centered
               ? 'items-center text-center'
-              : 'justify-between md:flex-row md:gap-16'
+              : displayColumns.length === 1
+                ? 'justify-between md:flex-row md:items-center md:gap-20'
+                : 'justify-between md:flex-row md:gap-16'
           )}
         >
           {/* Brand column */}
@@ -293,13 +258,28 @@ export function Footer(props: FooterProps) {
 
           {/* Links columns */}
           {shouldShowColumns && (
-            <div className='grid flex-1 gap-x-18 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 lg:justify-items-end'>
+            <div
+              className={cn(
+                'grid flex-1 gap-x-18 gap-y-10',
+                displayColumns.length === 1
+                  ? centered
+                    ? 'justify-items-center'
+                    : 'justify-items-center self-center'
+                  : 'sm:grid-cols-2 lg:grid-cols-3 lg:justify-items-end'
+              )}
+            >
               {displayColumns.map((column, index) => (
                 <div
                   key={index}
                   className={cn(
                     footerLinkClassName,
-                    centered ? 'min-w-[170px] text-center' : 'min-w-[180px]'
+                    displayColumns.length === 1
+                      ? centered
+                        ? 'min-w-[240px] text-center'
+                        : 'min-w-[240px] text-center'
+                      : centered
+                        ? 'min-w-[170px] text-center'
+                        : 'min-w-[180px]'
                   )}
                 >
                   {column.title ? (
@@ -312,7 +292,11 @@ export function Footer(props: FooterProps) {
                       {t(column.title)}
                     </p>
                   ) : null}
-                  <ul className='space-y-6'>
+                  <ul
+                    className={cn(
+                      displayColumns.length === 1 ? 'space-y-9' : 'space-y-6'
+                    )}
+                  >
                     {column.links.map((link, linkIndex) => (
                       <li key={linkIndex}>
                         <FooterLinkItem link={link} />
@@ -325,19 +309,18 @@ export function Footer(props: FooterProps) {
           )}
         </div>
 
-        {/* Copyright + optional legal links inline on the left, project
-            attribution on the right; wraps on narrow screens. */}
+        {/* Copyright + optional legal links; wraps on narrow screens. */}
         <div className='border-border/30 mt-12 flex flex-col items-center justify-center gap-x-3 gap-y-2 border-t pt-6 text-center'>
           <div
             className={cn(
-              'flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-base',
+              'flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 text-base',
               legalRowClassName
             )}
           >
             {footerHtml ? (
               <>
                 <div
-                  className='custom-footer'
+                  className='custom-footer max-w-full break-words text-center [&_p]:m-0 [&_p]:inline [&_span]:align-baseline [&_a]:align-baseline'
                   dangerouslySetInnerHTML={{ __html: footerHtml }}
                 />
                 <LegalLinks leadingSeparator />
@@ -352,11 +335,6 @@ export function Footer(props: FooterProps) {
               </>
             )}
           </div>
-          {!footerHtml ? (
-            <div className={cn(attributionClassName, 'text-center')}>
-              <ProjectAttribution currentYear={currentYear} />
-            </div>
-          ) : null}
         </div>
       </div>
     </footer>

@@ -46,6 +46,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { RiskAcknowledgementDialog } from '@/components/risk-acknowledgement-dialog'
+import { useSystemConfig } from '@/hooks/use-system-config'
 import { confirmPaymentCompliance } from '../api'
 import {
   SettingsForm,
@@ -220,6 +221,7 @@ export function PaymentSettingsSection({
   complianceDefaults,
 }: PaymentSettingsSectionProps) {
   const { t } = useTranslation()
+  const { systemName } = useSystemConfig()
   const queryClient = useQueryClient()
   const updateOption = useUpdateOption()
   const initialFormValues = React.useMemo<PaymentFormValues>(
@@ -283,16 +285,18 @@ export function PaymentSettingsSection({
         'If you provide generative AI services to the public in mainland China, you will fulfill legal obligations including filing, security assessment, content safety, complaint handling, generated content labeling, log retention, and personal information protection.'
       ),
       t(
-        'You commit not to use this system to implement, assist with, or indirectly implement acts that violate applicable laws and regulations, regulatory requirements, platform rules, public interests, or the lawful rights and interests of third parties.'
+        'You commit not to use {{systemName}} to implement, assist with, or indirectly implement acts that violate applicable laws and regulations, regulatory requirements, platform rules, public interests, or the lawful rights and interests of third parties.',
+        { systemName }
       ),
       t(
         'You understand and independently bear legal responsibility arising from deployment, operation, and charging behavior.'
       ),
       t(
-        'You understand this compliance reminder is only for risk notice and does not constitute legal advice, a compliance review conclusion, or a guarantee of the legality of your use of this system; you should consult professional legal or compliance advisors based on your actual business scenario.'
+        'You understand this compliance reminder is only for risk notice and does not constitute legal advice, a compliance review conclusion, or a guarantee of the legality of your use of {{systemName}}; you should consult professional legal or compliance advisors based on your actual business scenario.',
+        { systemName }
       ),
     ],
-    [t]
+    [systemName, t]
   )
 
   const complianceRequiredText = t(

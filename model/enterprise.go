@@ -1379,10 +1379,32 @@ func disableEnterpriseTokens(tx *gorm.DB, enterpriseId int, memberUserIds []int)
 	return nil
 }
 
+func requireActiveEnterpriseOwnerAccess(ownerUserId int, enterpriseId int) error {
+	if ownerUserId == 0 || enterpriseId == 0 {
+		return errors.New("owner user id or enterprise id is empty")
+	}
+	var relation EnterpriseAccountRelation
+	if err := DB.Where("enterprise_id = ? AND user_id = ? AND role = ? AND status = ?", enterpriseId, ownerUserId, EnterpriseRoleOwner, EnterpriseRelationStatusActive).
+		First(&relation).Error; err != nil {
+		return err
+	}
+	var account EnterpriseAccount
+	if err := DB.Select("id", "status").Where("id = ?", enterpriseId).First(&account).Error; err != nil {
+		return err
+	}
+	if account.Status != EnterpriseStatusEnabled {
+		return ErrEnterpriseDisabled
+	}
+	return nil
+}
+
 func getEnterpriseMemberByOwner(ownerUserId int, memberId int) (*EnterpriseMember, error) {
 	var member EnterpriseMember
 	err := DB.Where("id = ? AND owner_user_id = ?", memberId, ownerUserId).First(&member).Error
 	if err != nil {
+		return nil, err
+	}
+	if err := requireActiveEnterpriseOwnerAccess(ownerUserId, member.EnterpriseId); err != nil {
 		return nil, err
 	}
 	return &member, nil
@@ -1402,7 +1424,7 @@ func ListEnterpriseMembers(ownerUserId int) ([]EnterpriseMemberView, EnterpriseT
 		return nil, totals, err
 	}
 	var members []EnterpriseMember
-	if err := DB.Where("owner_user_id = ? AND status <> ?", ownerUserId, EnterpriseMemberStatusRemoved).
+	if err := DB.Where("enterprise_id = ? AND owner_user_id = ? AND status <> ?", account.Id, ownerUserId, EnterpriseMemberStatusRemoved).
 		Order("id desc").Find(&members).Error; err != nil {
 		return nil, totals, err
 	}
@@ -1833,7 +1855,7 @@ func GetEnterpriseLogs(ownerUserId int, memberId int, logType int, startTimestam
 	if err != nil {
 		return nil, 0, err
 	}
-	memberUserIds, err := enterpriseVisibleMemberUserIds(ownerUserId, memberId)
+	memberUserIds, err := enterpriseVisibleMemberUserIds(account.Id, ownerUserId, memberId)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -1887,7 +1909,7 @@ func GetEnterpriseLogs(ownerUserId int, memberId int, logType int, startTimestam
 func GetEnterpriseLogsForViewer(viewerUserId int, memberId int, logType int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string, keyword string, startIdx int, num int) ([]*Log, int64, error) {
 	account, err := GetEnterpriseAccountByOwner(viewerUserId)
 	if err == nil {
-		memberUserIds, err := enterpriseVisibleMemberUserIds(viewerUserId, memberId)
+		memberUserIds, err := enterpriseVisibleMemberUserIds(account.Id, viewerUserId, memberId)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -1953,8 +1975,8 @@ func queryEnterpriseLogs(enterpriseId int, memberUserIds []int, logType int, sta
 	return logs, total, nil
 }
 
-func enterpriseVisibleMemberUserIds(ownerUserId int, memberId int) ([]int, error) {
-	query := DB.Model(&EnterpriseMember{}).Where("owner_user_id = ? AND status <> ?", ownerUserId, EnterpriseMemberStatusRemoved)
+func enterpriseVisibleMemberUserIds(enterpriseId int, ownerUserId int, memberId int) ([]int, error) {
+	query := DB.Model(&EnterpriseMember{}).Where("enterprise_id = ? AND owner_user_id = ? AND status <> ?", enterpriseId, ownerUserId, EnterpriseMemberStatusRemoved)
 	if memberId != 0 {
 		query = query.Where("id = ?", memberId)
 	}

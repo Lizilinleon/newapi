@@ -50,6 +50,7 @@ import { toast } from 'sonner'
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { useHiddenClickUnlock } from '@/hooks/use-hidden-click-unlock'
+import { useSystemConfig } from '@/hooks/use-system-config'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -278,6 +279,7 @@ export function ChannelMutateDrawer({
   currentRow,
 }: ChannelMutateDrawerProps) {
   const { t } = useTranslation()
+  const { systemName } = useSystemConfig()
   const queryClient = useQueryClient()
   const { setOpen } = useChannels()
   const [fetchModelsDialogOpen, setFetchModelsDialogOpen] = useState(false)
@@ -668,7 +670,8 @@ export function ChannelMutateDrawer({
     const timer = setTimeout(() => {
       toast.warning(
         t(
-          'Warning: Base URL should not end with /v1. New API will handle it automatically. This may cause request failures.'
+          'Warning: Base URL should not end with /v1. {{systemName}} will handle it automatically. This may cause request failures.',
+          { systemName }
         ),
         { duration: 5000 }
       )
@@ -1820,7 +1823,8 @@ export function ChannelMutateDrawer({
                             </FormControl>
                             <FormDescription>
                               {t(
-                                'Custom API base URL. For official channels, New API has built-in addresses. Only fill this for third-party proxy sites or special endpoints. Do not add /v1 or trailing slash.'
+                                'Custom API base URL. For official channels, {{systemName}} has built-in addresses. Only fill this for third-party proxy sites or special endpoints. Do not add /v1 or trailing slash.',
+                                { systemName }
                               )}
                             </FormDescription>
                             <FormMessage />

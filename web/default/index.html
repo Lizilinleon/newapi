@@ -6,12 +6,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Primary Meta Tags -->
-    <title>New API</title>
-    <meta name="title" content="New API" />
+    <title>API Console</title>
+    <meta name="title" content="API Console" />
     <meta
       name="description"
       content="Unified AI API gateway and admin dashboard."
     />
+    <script>
+      (function () {
+        try {
+          var fallbackTitle = 'API Console'
+          var resolvedTitle = ''
+
+          var systemConfigRaw = localStorage.getItem('system-config-storage')
+          if (systemConfigRaw) {
+            var systemConfigParsed = JSON.parse(systemConfigRaw)
+            resolvedTitle =
+              systemConfigParsed &&
+              systemConfigParsed.state &&
+              systemConfigParsed.state.config &&
+              systemConfigParsed.state.config.systemName
+                ? systemConfigParsed.state.config.systemName
+                : ''
+          }
+
+          if (!resolvedTitle) {
+            var statusRaw = localStorage.getItem('status')
+            if (statusRaw) {
+              var statusParsed = JSON.parse(statusRaw)
+              resolvedTitle =
+                statusParsed && statusParsed.system_name
+                  ? statusParsed.system_name
+                  : ''
+            }
+          }
+
+          var finalTitle = resolvedTitle || fallbackTitle
+          document.title = finalTitle
+
+          var metaTitle = document.querySelector('meta[name="title"]')
+          if (metaTitle) {
+            metaTitle.setAttribute('content', finalTitle)
+          }
+        } catch (e) {
+          /* empty */
+        }
+      })()
+    </script>
 
     <meta name="theme-color" content="#fff" />
     <!--umami-->

@@ -50,6 +50,7 @@ import {
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
+import { useSystemConfig } from '@/hooks/use-system-config'
 
 type AttachmentPreference = '' | 'platform' | 'cross-platform'
 type AttachmentSelectValue = 'none' | 'platform' | 'cross-platform'
@@ -136,6 +137,7 @@ interface PasskeySectionProps {
 
 export function PasskeySection(props: PasskeySectionProps) {
   const { t } = useTranslation()
+  const { systemName } = useSystemConfig()
   const updateOption = useUpdateOption()
 
   const formDefaults = useMemo(
@@ -223,7 +225,7 @@ export function PasskeySection(props: PasskeySectionProps) {
                 <FormLabel>{t('Relying Party Display Name')}</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder={t('e.g. New API Console')}
+                    placeholder={systemName}
                     value={field.value ?? ''}
                     onChange={(event) => field.onChange(event.target.value)}
                     name={field.name}

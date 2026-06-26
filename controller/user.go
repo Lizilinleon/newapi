@@ -30,6 +30,76 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type adminUserResponse struct {
+	Id              int    `json:"id"`
+	Username        string `json:"username"`
+	DisplayName     string `json:"display_name"`
+	Role            int    `json:"role"`
+	Status          int    `json:"status"`
+	Email           string `json:"email,omitempty"`
+	GitHubId        string `json:"github_id,omitempty"`
+	DiscordId       string `json:"discord_id,omitempty"`
+	OidcId          string `json:"oidc_id,omitempty"`
+	WeChatId        string `json:"wechat_id,omitempty"`
+	TelegramId      string `json:"telegram_id,omitempty"`
+	Quota           int    `json:"quota"`
+	UsedQuota       int    `json:"used_quota"`
+	RequestCount    int    `json:"request_count"`
+	Group           string `json:"group"`
+	AffCode         string `json:"aff_code,omitempty"`
+	AffCount        int    `json:"aff_count,omitempty"`
+	AffQuota        int    `json:"aff_quota,omitempty"`
+	AffHistoryQuota int    `json:"aff_history_quota,omitempty"`
+	InviterId       int    `json:"inviter_id,omitempty"`
+	LinuxDOId       string `json:"linux_do_id,omitempty"`
+	Remark          string `json:"remark,omitempty"`
+	CreatedAt       int64  `json:"created_at,omitempty"`
+	LastLoginAt     int64  `json:"last_login_at,omitempty"`
+}
+
+func buildAdminUserResponse(user *model.User) adminUserResponse {
+	if user == nil {
+		return adminUserResponse{}
+	}
+	return adminUserResponse{
+		Id:              user.Id,
+		Username:        user.Username,
+		DisplayName:     user.DisplayName,
+		Role:            user.Role,
+		Status:          user.Status,
+		Email:           user.Email,
+		GitHubId:        user.GitHubId,
+		DiscordId:       user.DiscordId,
+		OidcId:          user.OidcId,
+		WeChatId:        user.WeChatId,
+		TelegramId:      user.TelegramId,
+		Quota:           user.Quota,
+		UsedQuota:       user.UsedQuota,
+		RequestCount:    user.RequestCount,
+		Group:           user.Group,
+		AffCode:         user.AffCode,
+		AffCount:        user.AffCount,
+		AffQuota:        user.AffQuota,
+		AffHistoryQuota: user.AffHistoryQuota,
+		InviterId:       user.InviterId,
+		LinuxDOId:       user.LinuxDOId,
+		Remark:          user.Remark,
+		CreatedAt:       user.CreatedAt,
+		LastLoginAt:     user.LastLoginAt,
+	}
+}
+
+func filterManageableAdminUsers(users []*model.User, viewerRole int) []adminUserResponse {
+	items := make([]adminUserResponse, 0, len(users))
+	for _, user := range users {
+		if viewerRole != common.RoleRootUser && user.Role >= viewerRole {
+			continue
+		}
+		items = append(items, buildAdminUserResponse(user))
+	}
+	return items
+}
+
 func Login(c *gin.Context) {
 	if !common.PasswordLoginEnabled {
 		common.ApiErrorI18n(c, i18n.MsgUserPasswordLoginDisabled)
@@ -288,14 +358,15 @@ func Register(c *gin.Context) {
 
 func GetAllUsers(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
-	users, total, err := model.GetAllUsers(pageInfo)
+	users, total, err := model.GetAllUsers(pageInfo, c.GetInt("role"))
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
+	items := filterManageableAdminUsers(users, c.GetInt("role"))
 
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(users)
+	pageInfo.SetItems(items)
 
 	common.ApiSuccess(c, pageInfo)
 	return
@@ -317,14 +388,15 @@ func SearchUsers(c *gin.Context) {
 		}
 	}
 	pageInfo := common.GetPageQuery(c)
-	users, total, err := model.SearchUsers(keyword, group, role, status, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	users, total, err := model.SearchUsers(keyword, group, role, status, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), c.GetInt("role"))
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
+	items := filterManageableAdminUsers(users, c.GetInt("role"))
 
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(users)
+	pageInfo.SetItems(items)
 	common.ApiSuccess(c, pageInfo)
 	return
 }
@@ -352,7 +424,7 @@ func GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    user,
+		"data":    buildAdminUserResponse(user),
 	})
 	return
 }

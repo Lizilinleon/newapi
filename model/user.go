@@ -192,7 +192,7 @@ func GetMaxUserId() int {
 	return user.Id
 }
 
-func GetAllUsers(pageInfo *common.PageInfo) (users []*User, total int64, err error) {
+func GetAllUsers(pageInfo *common.PageInfo, viewerRole int) (users []*User, total int64, err error) {
 	// Start transaction
 	tx := DB.Begin()
 	if tx.Error != nil {
@@ -204,15 +204,20 @@ func GetAllUsers(pageInfo *common.PageInfo) (users []*User, total int64, err err
 		}
 	}()
 
+	query := tx.Unscoped().Model(&User{})
+	if viewerRole != common.RoleRootUser {
+		query = query.Where("role < ?", viewerRole)
+	}
+
 	// Get total count within transaction
-	err = tx.Unscoped().Model(&User{}).Count(&total).Error
+	err = query.Count(&total).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
 	}
 
 	// Get paginated users within same transaction
-	err = tx.Unscoped().Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Omit("password").Find(&users).Error
+	err = query.Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Omit("password").Find(&users).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
@@ -226,7 +231,7 @@ func GetAllUsers(pageInfo *common.PageInfo) (users []*User, total int64, err err
 	return users, total, nil
 }
 
-func SearchUsers(keyword string, group string, role *int, status *int, startIdx int, num int) ([]*User, int64, error) {
+func SearchUsers(keyword string, group string, role *int, status *int, startIdx int, num int, viewerRole int) ([]*User, int64, error) {
 	var users []*User
 	var total int64
 	var err error
@@ -244,6 +249,9 @@ func SearchUsers(keyword string, group string, role *int, status *int, startIdx 
 
 	// 构建基础查询
 	query := tx.Unscoped().Model(&User{})
+	if viewerRole != common.RoleRootUser {
+		query = query.Where("role < ?", viewerRole)
+	}
 
 	// 构建搜索条件
 	likeCondition := "username LIKE ? OR email LIKE ? OR display_name LIKE ?"

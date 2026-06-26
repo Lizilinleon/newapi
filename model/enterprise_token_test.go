@@ -9,8 +9,24 @@ import (
 
 func TestGetEnterpriseMemberTokensForViewerAllowsOwnerAndSelf(t *testing.T) {
 	truncateTables(t)
+	require.NoError(t, DB.Exec("DELETE FROM enterprise_accounts").Error)
+	require.NoError(t, DB.Exec("DELETE FROM enterprise_account_relations").Error)
 	require.NoError(t, DB.Exec("DELETE FROM enterprise_members").Error)
 	require.NoError(t, DB.Exec("DELETE FROM tokens").Error)
+
+	require.NoError(t, DB.Create(&EnterpriseAccount{
+		Id:              30,
+		OwnerUserId:     10,
+		CreatedByUserId: 10,
+		Name:            "org",
+		Status:          EnterpriseStatusEnabled,
+	}).Error)
+	require.NoError(t, DB.Create(&EnterpriseAccountRelation{
+		EnterpriseId: 30,
+		UserId:       10,
+		Role:         EnterpriseRoleOwner,
+		Status:       EnterpriseRelationStatusActive,
+	}).Error)
 
 	member := EnterpriseMember{
 		EnterpriseId: 30,
@@ -80,9 +96,60 @@ func TestGetEnterpriseMemberTokensForViewerRejectsOutsider(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestEnterpriseOwnerActionsRequireActiveOwnerRelation(t *testing.T) {
+	truncateTables(t)
+	require.NoError(t, DB.Exec("DELETE FROM enterprise_accounts").Error)
+	require.NoError(t, DB.Exec("DELETE FROM enterprise_account_relations").Error)
+	require.NoError(t, DB.Exec("DELETE FROM enterprise_members").Error)
+	require.NoError(t, DB.Exec("DELETE FROM tokens").Error)
+
+	require.NoError(t, DB.Create(&EnterpriseAccount{
+		Id:              30,
+		OwnerUserId:     10,
+		CreatedByUserId: 10,
+		Name:            "org",
+		Status:          EnterpriseStatusEnabled,
+	}).Error)
+	require.NoError(t, DB.Create(&EnterpriseAccountRelation{
+		EnterpriseId: 30,
+		UserId:       10,
+		Role:         EnterpriseRoleOwner,
+		Status:       EnterpriseRelationStatusRemoved,
+	}).Error)
+	member := EnterpriseMember{
+		EnterpriseId: 30,
+		OwnerUserId:  10,
+		MemberUserId: 20,
+		Role:         EnterpriseRoleMember,
+		Status:       EnterpriseMemberStatusActive,
+	}
+	require.NoError(t, DB.Create(&member).Error)
+	require.NoError(t, DB.Create(&Token{
+		UserId:         20,
+		Name:           "enterprise-key",
+		Key:            "enterprise-key",
+		Status:         common.TokenStatusEnabled,
+		ExpiredTime:    -1,
+		UnlimitedQuota: true,
+		EnterpriseId:   30,
+	}).Error)
+
+	_, _, err := GetEnterpriseMemberTokensForViewer(10, member.Id, 0, 10)
+	require.Error(t, err)
+
+	_, err = UpdateEnterpriseMember(10, member.Id, EnterpriseMemberStatusDisabled, "")
+	require.Error(t, err)
+
+	selfTokens, selfTotal, err := GetEnterpriseMemberTokensForViewer(20, member.Id, 0, 10)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, selfTotal)
+	require.Len(t, selfTokens, 1)
+}
+
 func TestUpdateEnterpriseMemberDisabledRefundsAllocationAndDisablesTokens(t *testing.T) {
 	truncateTables(t)
 	require.NoError(t, DB.Exec("DELETE FROM enterprise_accounts").Error)
+	require.NoError(t, DB.Exec("DELETE FROM enterprise_account_relations").Error)
 	require.NoError(t, DB.Exec("DELETE FROM enterprise_members").Error)
 	require.NoError(t, DB.Exec("DELETE FROM enterprise_quota_allocations").Error)
 	require.NoError(t, DB.Exec("DELETE FROM tokens").Error)
@@ -98,6 +165,12 @@ func TestUpdateEnterpriseMemberDisabledRefundsAllocationAndDisablesTokens(t *tes
 		Status:      EnterpriseStatusEnabled,
 	}
 	require.NoError(t, DB.Create(&account).Error)
+	require.NoError(t, DB.Create(&EnterpriseAccountRelation{
+		EnterpriseId: 30,
+		UserId:       10,
+		Role:         EnterpriseRoleOwner,
+		Status:       EnterpriseRelationStatusActive,
+	}).Error)
 
 	member := EnterpriseMember{
 		EnterpriseId: 30,
