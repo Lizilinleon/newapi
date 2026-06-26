@@ -27,6 +27,7 @@ import {
   ListTodo,
   MessageSquare,
   Radio,
+  ServerCog,
   Settings,
   Ticket,
   User,
@@ -211,6 +212,12 @@ export function useSidebarData(): SidebarData {
               '/admin-logs/task',
             ],
             icon: FileText,
+          },
+          {
+            title: t('System Info'),
+            url: '/system-info',
+            icon: ServerCog,
+            requiredRole: ROLE.SUPER_ADMIN,
           },
           {
             title: t('System Settings'),

@@ -16,23 +16,23 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useCallback, useState } from 'react'
-import { type Row } from '@tanstack/react-table'
+import { useCallback, useState, type MouseEvent } from 'react'
+import type { Row } from '@tanstack/react-table'
 import {
-  Trash2,
-  Edit,
-  Power,
-  PowerOff,
-  ExternalLink,
   ArrowRightLeft,
   Copy,
+  Edit,
+  ExternalLink,
   Link,
   Loader2,
-  MoreHorizontal as DotsHorizontalIcon,
+  Power,
+  PowerOff,
+  Trash2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
+import { DataTableRowActionMenu } from '@/components/data-table/core/row-action-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,15 +45,12 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
   Tooltip,
@@ -63,6 +60,7 @@ import {
 import { useChatPresets } from '@/features/chat/hooks/use-chat-presets'
 import { resolveChatUrl, type ChatPreset } from '@/features/chat/lib/chat-links'
 import { sendToFluent } from '@/features/chat/lib/send-to-fluent'
+
 import { updateApiKeyStatus } from '../api'
 import { API_KEY_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import { apiKeySchema } from '../types'
@@ -115,6 +113,7 @@ export function DataTableRowActions<TData>({
   const isRealKeyLoading = Boolean(loadingKeys[apiKey.id])
 
   const hasChatPresets = chatPresets.length > 0
+  const toggleLabel = isEnabled ? t('Disable') : t('Enable')
 
   const handleMenuOpenChange = useCallback(
     (open: boolean) => {
@@ -131,6 +130,14 @@ export function DataTableRowActions<TData>({
     toast.info(t('API key is loading, please try again in a moment'))
     return null
   }, [apiKey.id, resolvedRealKey, resolveRealKey, t])
+
+  const handleOpenCCSwitch = useCallback(async () => {
+    const realKey = await resolveRealKey(apiKey.id)
+    if (!realKey) return
+    setResolvedKey(realKey)
+    setCurrentRow(apiKey)
+    setOpen('cc-switch')
+  }, [apiKey, resolveRealKey, setCurrentRow, setOpen, setResolvedKey])
 
   const handleOpenChatPreset = useCallback(
     async (preset: ChatPreset) => {
@@ -173,9 +180,7 @@ export function DataTableRowActions<TData>({
     [resolveRealKey, apiKey.id, serverAddress, t]
   )
 
-  const handleToggleStatus = async (
-    e?: React.MouseEvent<HTMLButtonElement>
-  ) => {
+  const handleToggleStatus = async (e?: MouseEvent<HTMLButtonElement>) => {
     e?.stopPropagation()
     const newStatus = isEnabled
       ? API_KEY_STATUS.DISABLED
@@ -200,88 +205,91 @@ export function DataTableRowActions<TData>({
     }
   }
 
-  const handleOpenCCSwitch = useCallback(async () => {
-    const realKey = await resolveRealKey(apiKey.id)
-    if (!realKey) return
-    setResolvedKey(realKey)
-    setCurrentRow(apiKey)
-    setOpen('cc-switch')
-  }, [apiKey, resolveRealKey, setCurrentRow, setOpen, setResolvedKey])
+  let statusIcon = <Power className='size-4' />
+  if (isTogglingStatus) {
+    statusIcon = <Loader2 className='size-4 animate-spin' />
+  } else if (isEnabled) {
+    statusIcon = <PowerOff className='size-4' />
+  }
 
   return (
     <>
       <div className='-ml-1.5 flex items-center justify-end gap-1'>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              variant='ghost'
-              size='icon-sm'
-              onClick={(event) => {
-                if (isEnabled) {
-                  event.stopPropagation()
-                  setDisableConfirmOpen(true)
-                  return
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant='ghost'
+                size='icon-sm'
+                onClick={(event) => {
+                  if (isEnabled) {
+                    event.stopPropagation()
+                    setDisableConfirmOpen(true)
+                    return
+                  }
+                  void handleToggleStatus(event)
+                }}
+                disabled={isTogglingStatus}
+                aria-label={toggleLabel}
+                className={
+                  isEnabled
+                    ? 'text-destructive hover:text-destructive'
+                    : 'text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400'
                 }
-                void handleToggleStatus(event)
-              }}
-              disabled={isTogglingStatus}
-              aria-label={isEnabled ? t('Disable') : t('Enable')}
-              className={
-                isEnabled
-                  ? 'text-destructive hover:text-destructive'
-                  : 'text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400'
-              }
-            />
-          }
-        >
-          {isTogglingStatus ? (
-            <Loader2 className='size-4 animate-spin' />
-          ) : isEnabled ? (
-            <PowerOff className='size-4' />
-          ) : (
-            <Power className='size-4' />
-          )}
-        </TooltipTrigger>
-        <TooltipContent>
-          {isEnabled ? t('Disable') : t('Enable')}
-        </TooltipContent>
-      </Tooltip>
+              />
+            }
+          >
+            {statusIcon}
+          </TooltipTrigger>
+          <TooltipContent>{toggleLabel}</TooltipContent>
+        </Tooltip>
 
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              variant='ghost'
-              size='icon-sm'
-              onClick={handleOpenCCSwitch}
-              disabled={isRealKeyLoading}
-              aria-label={t('CC Switch')}
-            />
-          }
-        >
-          {isRealKeyLoading ? (
-            <Loader2 className='size-4 animate-spin' />
-          ) : (
-            <ArrowRightLeft className='size-4' />
-          )}
-        </TooltipTrigger>
-        <TooltipContent>{t('CC Switch')}</TooltipContent>
-      </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant='ghost'
+                size='icon-sm'
+                onClick={() => {
+                  setCurrentRow(apiKey)
+                  setOpen('update')
+                }}
+                aria-label={t('Edit')}
+              />
+            }
+          >
+            <Edit className='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>{t('Edit')}</TooltipContent>
+        </Tooltip>
 
-      <DropdownMenu modal={false} onOpenChange={handleMenuOpenChange}>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant='ghost'
-              className='data-popup-open:bg-muted flex h-8 w-8 p-0'
-            />
-          }
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant='ghost'
+                size='icon-sm'
+                onClick={handleOpenCCSwitch}
+                disabled={isRealKeyLoading}
+                aria-label={t('CC Switch')}
+              />
+            }
+          >
+            {isRealKeyLoading ? (
+              <Loader2 className='size-4 animate-spin' />
+            ) : (
+              <ArrowRightLeft className='size-4' />
+            )}
+          </TooltipTrigger>
+          <TooltipContent>{t('CC Switch')}</TooltipContent>
+        </Tooltip>
+
+        <DataTableRowActionMenu
+          ariaLabel={t('Open menu')}
+          contentClassName='w-[200px]'
+          modal={false}
+          onOpenChange={handleMenuOpenChange}
         >
-          <DotsHorizontalIcon className='h-4 w-4' />
-          <span className='sr-only'>{t('Open menu')}</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align='end' className='w-[200px]'>
           <DropdownMenuItem
             onClick={async () => {
               const realKey = getCachedRealKey()
@@ -299,10 +307,7 @@ export function DataTableRowActions<TData>({
             onClick={async () => {
               const realKey = getCachedRealKey()
               if (!realKey) return
-              const connStr = encodeConnectionString(
-                realKey,
-                getServerAddress()
-              )
+              const connStr = encodeConnectionString(realKey, getServerAddress())
               const ok = await copyToClipboard(connStr)
               if (ok) toast.success(t('Copied'))
             }}
@@ -313,17 +318,6 @@ export function DataTableRowActions<TData>({
             </DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(apiKey)
-              setOpen('update')
-            }}
-          >
-            {t('Edit')}
-            <DropdownMenuShortcut>
-              <Edit size={16} />
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
           {hasChatPresets && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>{t('Chat')}</DropdownMenuSubTrigger>
@@ -344,7 +338,7 @@ export function DataTableRowActions<TData>({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
-          <DropdownMenuSeparator />
+          {hasChatPresets && <DropdownMenuSeparator />}
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(apiKey)
@@ -357,9 +351,9 @@ export function DataTableRowActions<TData>({
               <Trash2 size={16} />
             </DropdownMenuShortcut>
           </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </DataTableRowActionMenu>
       </div>
+
       <AlertDialog
         open={disableConfirmOpen}
         onOpenChange={setDisableConfirmOpen}

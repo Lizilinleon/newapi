@@ -52,7 +52,9 @@ func TestMain(m *testing.M) {
 		&EnterpriseAccountRelation{},
 		&EnterpriseMember{},
 		&EnterpriseQuotaAllocation{},
+		&SystemInstance{},
 		&SystemTask{},
+		&SystemTaskLock{},
 	); err != nil {
 		panic("failed to migrate: " + err.Error())
 	}
@@ -80,6 +82,8 @@ func truncateTables(t *testing.T) {
 		DB.Exec("DELETE FROM enterprise_account_relations")
 		DB.Exec("DELETE FROM enterprise_members")
 		DB.Exec("DELETE FROM enterprise_quota_allocations")
+		DB.Exec("DELETE FROM system_instances")
+		DB.Exec("DELETE FROM system_task_locks")
 		DB.Exec("DELETE FROM system_tasks")
 	})
 }
