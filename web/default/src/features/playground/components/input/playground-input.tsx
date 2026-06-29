@@ -45,6 +45,9 @@ interface PlaygroundInputProps {
   onGroupChange: (value: string) => void
   hasMessages?: boolean
   onClearMessages?: () => void
+  apiKey: string
+  apiBaseUrl: string
+  onApiConnectionChange: (apiKey: string, apiBaseUrl: string) => void
 }
 
 export function PlaygroundInput({
@@ -61,6 +64,9 @@ export function PlaygroundInput({
   onGroupChange,
   hasMessages = false,
   onClearMessages,
+  apiKey,
+  apiBaseUrl,
+  onApiConnectionChange,
 }: PlaygroundInputProps) {
   const { t } = useTranslation()
   const [text, setText] = useState('')
@@ -110,6 +116,9 @@ export function PlaygroundInput({
                 disabled={disabled}
                 hasMessages={hasMessages}
                 onClearMessages={onClearMessages}
+                apiKey={apiKey}
+                apiBaseUrl={apiBaseUrl}
+                onApiConnectionChange={onApiConnectionChange}
               />
             }
           />

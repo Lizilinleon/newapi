@@ -23,6 +23,10 @@ import {
   saveConfig,
   saveParameterEnabled,
   saveMessages,
+  loadApiKey,
+  loadApiBaseUrl,
+  saveApiKey,
+  saveApiBaseUrl,
   applyMessageStateUpdate,
   getInitialParameterEnabled,
   getInitialPlaygroundConfig,
@@ -51,6 +55,9 @@ export function usePlaygroundState() {
   const [parameterEnabled, setParameterEnabled] = useState<ParameterEnabled>(
     getInitialParameterEnabled
   )
+
+  const [apiKey, setApiKey] = useState(loadApiKey)
+  const [apiBaseUrl, setApiBaseUrl] = useState(loadApiBaseUrl)
 
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoadingMessages, setIsLoadingMessages] = useState(true)
@@ -144,6 +151,19 @@ export function usePlaygroundState() {
     [persistMessages]
   )
 
+  const updateApiConnection = useCallback(
+    (nextApiKey: string, nextApiBaseUrl: string) => {
+      const trimmedApiKey = nextApiKey.trim()
+      const trimmedApiBaseUrl = nextApiBaseUrl.trim()
+
+      setApiKey(trimmedApiKey)
+      setApiBaseUrl(trimmedApiBaseUrl)
+      saveApiKey(trimmedApiKey)
+      saveApiBaseUrl(trimmedApiBaseUrl)
+    },
+    []
+  )
+
   // Clear all messages
   const clearMessages = useCallback(() => {
     updateMessages([])
@@ -163,6 +183,8 @@ export function usePlaygroundState() {
     parameterEnabled,
     messages,
     isLoadingMessages,
+    apiKey,
+    apiBaseUrl,
     models,
     groups,
 
@@ -174,6 +196,7 @@ export function usePlaygroundState() {
     updateConfig,
     updateParameterEnabled,
     updateMessages,
+    updateApiConnection,
     clearMessages,
     resetConfig,
   }

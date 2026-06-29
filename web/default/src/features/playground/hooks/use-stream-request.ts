@@ -21,6 +21,7 @@ import { SSE } from 'sse.js'
 
 import { getCommonHeaders } from '@/lib/api'
 
+import { buildApiUrl } from '../api'
 import { API_ENDPOINTS, ERROR_MESSAGES } from '../constants'
 import {
   getStreamReadyStateError,
@@ -54,15 +55,28 @@ export function useStreamRequest() {
       payload: ChatCompletionRequest,
       onUpdate: (type: 'reasoning' | 'content', chunk: string) => void,
       onComplete: () => void,
-      onError: (error: string, errorCode?: string) => void
+      onError: (error: string, errorCode?: string) => void,
+      apiKey?: string,
+      apiBaseUrl?: string
     ) => {
       sseSourceRef.current?.close()
 
-      const source = new SSE(API_ENDPOINTS.CHAT_COMPLETIONS, {
-        headers: getCommonHeaders(),
-        method: 'POST',
-        payload: JSON.stringify(payload),
-      })
+      const trimmedApiKey = apiKey?.trim()
+      const source = new SSE(
+        trimmedApiKey
+          ? buildApiUrl(apiBaseUrl, '/chat/completions')
+          : API_ENDPOINTS.CHAT_COMPLETIONS,
+        {
+          headers: trimmedApiKey
+            ? {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${trimmedApiKey}`,
+              }
+            : getCommonHeaders(),
+          method: 'POST',
+          payload: JSON.stringify(payload),
+        }
+      )
 
       sseSourceRef.current = source
       isStreamCompleteRef.current = false

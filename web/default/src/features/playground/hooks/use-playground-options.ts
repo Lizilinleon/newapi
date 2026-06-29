@@ -33,6 +33,8 @@ import type { GroupOption, ModelOption, PlaygroundConfig } from '../types'
 type UsePlaygroundOptionsParams = {
   currentGroup: string
   currentModel: string
+  apiKey?: string
+  apiBaseUrl?: string
   setGroups: (groups: GroupOption[]) => void
   setModels: (models: ModelOption[]) => void
   updateConfig: <K extends keyof PlaygroundConfig>(
@@ -44,11 +46,17 @@ type UsePlaygroundOptionsParams = {
 export function usePlaygroundOptions({
   currentGroup,
   currentModel,
+  apiKey,
+  apiBaseUrl,
   setGroups,
   setModels,
   updateConfig,
 }: UsePlaygroundOptionsParams) {
   const { t } = useTranslation()
+  const trimmedApiKey = apiKey?.trim() || ''
+  const apiKeyFingerprint = trimmedApiKey
+    ? `${trimmedApiKey.slice(0, 8)}:${trimmedApiKey.length}`
+    : ''
 
   const {
     data: modelsData,
@@ -56,9 +64,14 @@ export function usePlaygroundOptions({
     isError: isModelsError,
     isLoading: isLoadingModels,
   } = useQuery({
-    queryKey: ['playground-models', currentGroup],
-    queryFn: () => getUserModels(currentGroup),
-    enabled: currentGroup !== '',
+    queryKey: [
+      'playground-models',
+      currentGroup,
+      apiKeyFingerprint,
+      apiBaseUrl?.trim() || '',
+    ],
+    queryFn: () => getUserModels(currentGroup, trimmedApiKey, apiBaseUrl),
+    enabled: Boolean(trimmedApiKey || currentGroup !== ''),
   })
 
   const {

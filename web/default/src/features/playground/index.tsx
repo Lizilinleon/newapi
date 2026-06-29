@@ -31,18 +31,23 @@ export function Playground() {
     parameterEnabled,
     messages,
     isLoadingMessages,
+    apiKey,
+    apiBaseUrl,
     models,
     groups,
     updateMessages,
     setModels,
     setGroups,
     updateConfig,
+    updateApiConnection,
     clearMessages,
   } = usePlaygroundState()
 
   const { sendChat, stopGeneration, isGenerating } = useChatHandler({
     config,
     parameterEnabled,
+    apiKey,
+    apiBaseUrl,
     onMessageUpdate: updateMessages,
   })
 
@@ -68,6 +73,8 @@ export function Playground() {
   const { isLoadingModels } = usePlaygroundOptions({
     currentGroup: config.group,
     currentModel: config.model,
+    apiKey,
+    apiBaseUrl,
     setGroups,
     setModels,
     updateConfig,
@@ -108,6 +115,9 @@ export function Playground() {
           onStop={stopGeneration}
           onSubmit={handleSendMessage}
           hasMessages={messages.length > 0}
+          apiKey={apiKey}
+          apiBaseUrl={apiBaseUrl}
+          onApiConnectionChange={updateApiConnection}
         />
       </div>
     </div>

@@ -40,6 +40,8 @@ import { useStreamRequest } from './use-stream-request'
 interface UseChatHandlerOptions {
   config: PlaygroundConfig
   parameterEnabled: ParameterEnabled
+  apiKey?: string
+  apiBaseUrl?: string
   onMessageUpdate: (updater: (prev: Message[]) => Message[]) => void
 }
 
@@ -68,6 +70,8 @@ function mergePendingStreamChunk(
 export function useChatHandler({
   config,
   parameterEnabled,
+  apiKey,
+  apiBaseUrl,
   onMessageUpdate,
 }: UseChatHandlerOptions) {
   const { t } = useTranslation()
@@ -214,7 +218,9 @@ export function useChatHandler({
         payload,
         handleStreamUpdate,
         handleStreamComplete,
-        handleStreamError
+        handleStreamError,
+        apiKey,
+        apiBaseUrl
       )
     },
     [
@@ -224,6 +230,8 @@ export function useChatHandler({
       handleStreamUpdate,
       handleStreamComplete,
       handleStreamError,
+      apiKey,
+      apiBaseUrl,
     ]
   )
 
@@ -245,7 +253,9 @@ export function useChatHandler({
         setIsRequesting(true)
         const response = await sendChatCompletion(
           payload,
-          abortController.signal
+          abortController.signal,
+          apiKey,
+          apiBaseUrl
         )
         if (abortController.signal.aborted) return
 
@@ -276,7 +286,14 @@ export function useChatHandler({
         }
       }
     },
-    [config, parameterEnabled, onMessageUpdate, handleStreamError]
+    [
+      config,
+      parameterEnabled,
+      onMessageUpdate,
+      handleStreamError,
+      apiKey,
+      apiBaseUrl,
+    ]
   )
 
   // Send chat request (stream or non-stream based on config)
