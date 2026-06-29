@@ -2513,12 +2513,14 @@ function MemberView(props: { summary: EnterpriseSummary }) {
         <SectionPageLayout.Title>
           {getEnterpriseSectionTitle(section, t)}
         </SectionPageLayout.Title>
-        <SectionPageLayout.Actions>
-          <Button variant='destructive' onClick={() => setLeaveOpen(true)}>
-            <TriangleAlert data-icon='inline-start' />
-            {t('Leave enterprise')}
-          </Button>
-        </SectionPageLayout.Actions>
+        {section === 'overview' && (
+          <SectionPageLayout.Actions>
+            <Button variant='destructive' onClick={() => setLeaveOpen(true)}>
+              <TriangleAlert data-icon='inline-start' />
+              {t('Leave enterprise')}
+            </Button>
+          </SectionPageLayout.Actions>
+        )}
         <SectionPageLayout.Content>
           {section === 'usage-logs' ? (
             <EnterpriseUsageLogsPanel member={props.summary.member ?? null} />

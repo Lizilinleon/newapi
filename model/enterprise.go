@@ -36,6 +36,67 @@ var (
 	ErrEnterpriseDisabled       = errors.New("enterprise account is disabled")
 )
 
+func assertEnterpriseMemberNotActiveTx(tx *gorm.DB, enterpriseId int, memberUserId int, excludeMemberId int) error {
+	query := tx.Model(&EnterpriseMember{}).
+		Where("member_user_id = ? AND status <> ?", memberUserId, EnterpriseMemberStatusRemoved)
+	if excludeMemberId != 0 {
+		query = query.Where("id <> ?", excludeMemberId)
+	}
+	var existing EnterpriseMember
+	err := query.Order("id desc").First(&existing).Error
+	if err == nil {
+		if existing.EnterpriseId == enterpriseId {
+			return errors.New("user is already a member of this enterprise")
+		}
+		return errors.New("user is already a member of another enterprise")
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil
+	}
+	return err
+}
+
+func dedupeEnterpriseMembers(members []EnterpriseMember) []EnterpriseMember {
+	if len(members) <= 1 {
+		return members
+	}
+	seen := make(map[int]bool, len(members))
+	deduped := make([]EnterpriseMember, 0, len(members))
+	for _, member := range members {
+		if member.MemberUserId == 0 || seen[member.MemberUserId] {
+			continue
+		}
+		seen[member.MemberUserId] = true
+		deduped = append(deduped, member)
+	}
+	return deduped
+}
+
+func DedupeEnterpriseMemberRows() error {
+	if DB == nil || !DB.Migrator().HasTable(&EnterpriseMember{}) {
+		return nil
+	}
+	var members []EnterpriseMember
+	if err := DB.Order("enterprise_id asc, member_user_id asc, status asc, id desc").Find(&members).Error; err != nil {
+		return err
+	}
+	seen := make(map[string]bool, len(members))
+	duplicateIds := make([]int, 0)
+	for _, member := range members {
+		key := fmt.Sprintf("%d:%d", member.EnterpriseId, member.MemberUserId)
+		if seen[key] {
+			duplicateIds = append(duplicateIds, member.Id)
+			continue
+		}
+		seen[key] = true
+	}
+	if len(duplicateIds) == 0 {
+		return nil
+	}
+	common.SysLog(fmt.Sprintf("removing %d duplicate enterprise member row(s)", len(duplicateIds)))
+	return DB.Unscoped().Where("id IN ?", duplicateIds).Delete(&EnterpriseMember{}).Error
+}
+
 type EnterpriseAccount struct {
 	Id              int    `json:"id"`
 	OwnerUserId     int    `json:"owner_user_id" gorm:"uniqueIndex"`
@@ -59,9 +120,9 @@ type EnterpriseAccountRelation struct {
 
 type EnterpriseMember struct {
 	Id           int    `json:"id"`
-	EnterpriseId int    `json:"enterprise_id" gorm:"index"`
+	EnterpriseId int    `json:"enterprise_id" gorm:"index;uniqueIndex:idx_enterprise_member_user"`
 	OwnerUserId  int    `json:"owner_user_id" gorm:"index"`
-	MemberUserId int    `json:"member_user_id" gorm:"index"`
+	MemberUserId int    `json:"member_user_id" gorm:"index;uniqueIndex:idx_enterprise_member_user"`
 	Role         string `json:"role" gorm:"type:varchar(32);default:'member'"`
 	Status       int    `json:"status" gorm:"type:int;default:1;index"`
 	DisplayName  string `json:"display_name" gorm:"type:varchar(64);default:''"`
@@ -900,6 +961,10 @@ func createEnterpriseMemberForUser(ownerUserId int, user *User, inputDisplayName
 				tx.Rollback()
 			}
 		}()
+		if err := assertEnterpriseMemberNotActiveTx(tx, account.Id, user.Id, member.Id); err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 		if err := tx.Model(&EnterpriseMember{}).Where("id = ? AND owner_user_id = ?", member.Id, ownerUserId).Updates(map[string]interface{}{
 			"enterprise_id": account.Id,
 			"role":          EnterpriseRoleMember,
@@ -926,6 +991,10 @@ func createEnterpriseMemberForUser(ownerUserId int, user *User, inputDisplayName
 			tx.Rollback()
 		}
 	}()
+	if err := assertEnterpriseMemberNotActiveTx(tx, account.Id, user.Id, 0); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
 	member := EnterpriseMember{
 		EnterpriseId: account.Id,
 		OwnerUserId:  ownerUserId,
@@ -948,9 +1017,21 @@ func createEnterpriseMemberForUser(ownerUserId int, user *User, inputDisplayName
 func getEnterpriseInviteUser(identifier string, email string) (User, error) {
 	var user User
 	identifier = strings.TrimSpace(identifier)
-	email = strings.TrimSpace(email)
+	email = normalizeUserEmail(email)
 	if identifier == "" && email == "" {
 		return user, errors.New("username or email is required")
+	}
+	for _, candidateEmail := range []string{identifier, email} {
+		if !strings.Contains(candidateEmail, "@") {
+			continue
+		}
+		count, err := countUsersByEmail(DB, candidateEmail)
+		if err != nil {
+			return user, err
+		}
+		if count > 1 {
+			return user, errors.New("email is used by multiple users, please fix duplicate accounts first")
+		}
 	}
 	query := DB.Where("LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)", identifier, identifier)
 	if email != "" {
@@ -1431,6 +1512,7 @@ func ListEnterpriseMembers(ownerUserId int) ([]EnterpriseMemberView, EnterpriseT
 	if len(members) == 0 {
 		return []EnterpriseMemberView{}, totals, nil
 	}
+	members = dedupeEnterpriseMembers(members)
 	userIds := make([]int, 0, len(members))
 	for _, member := range members {
 		userIds = append(userIds, member.MemberUserId)
@@ -2188,6 +2270,7 @@ func AdminListEnterpriseMembers(enterpriseId int) ([]EnterpriseMemberView, Enter
 	if len(members) == 0 {
 		return []EnterpriseMemberView{}, totals, nil
 	}
+	members = dedupeEnterpriseMembers(members)
 	userIds := make([]int, 0, len(members))
 	for _, member := range members {
 		userIds = append(userIds, member.MemberUserId)

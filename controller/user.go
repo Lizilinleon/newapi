@@ -1173,6 +1173,7 @@ func EmailBind(c *gin.Context) {
 		return
 	}
 	email := req.Email
+	email = strings.ToLower(strings.TrimSpace(email))
 	code := req.Code
 	if !common.VerifyCodeWithKey(email, code, common.EmailVerificationPurpose) {
 		common.ApiErrorI18n(c, i18n.MsgUserVerificationCodeError)
@@ -1188,8 +1189,11 @@ func EmailBind(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if model.IsEmailAlreadyTaken(email) && !strings.EqualFold(user.Email, email) {
+		common.ApiError(c, errors.New("email is already taken"))
+		return
+	}
 	user.Email = email
-	// no need to check if this email already taken, because we have used verification code to check it
 	err = user.Update(false)
 	if err != nil {
 		common.ApiError(c, err)

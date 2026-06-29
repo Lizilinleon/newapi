@@ -169,6 +169,8 @@ func CheckUserExistOrDeleted(username string, email string) (bool, error) {
 	// err := DB.Unscoped().First(&user, "username = ? or email = ?", username, email).Error
 	// check email if empty
 	var err error
+	username = strings.TrimSpace(username)
+	email = normalizeUserEmail(email)
 	if email == "" {
 		err = DB.Unscoped().First(&user, "LOWER(username) = LOWER(?)", username).Error
 	} else {
@@ -184,6 +186,36 @@ func CheckUserExistOrDeleted(username string, email string) (bool, error) {
 	}
 	// exist, return true, nil
 	return true, nil
+}
+
+func normalizeUserEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
+
+func isEmailTakenByOther(tx *gorm.DB, email string, userId int) (bool, error) {
+	email = normalizeUserEmail(email)
+	if email == "" {
+		return false, nil
+	}
+	query := tx.Unscoped().Model(&User{}).Where("LOWER(email) = LOWER(?)", email)
+	if userId != 0 {
+		query = query.Where("id <> ?", userId)
+	}
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func countUsersByEmail(tx *gorm.DB, email string) (int64, error) {
+	email = normalizeUserEmail(email)
+	if email == "" {
+		return 0, nil
+	}
+	var count int64
+	err := tx.Unscoped().Model(&User{}).Where("LOWER(email) = LOWER(?)", email).Count(&count).Error
+	return count, err
 }
 
 func GetMaxUserId() int {
@@ -395,6 +427,12 @@ func (user *User) TransferAffQuotaToQuota(quota int) error {
 
 func (user *User) Insert(inviterId int) error {
 	var err error
+	user.Email = normalizeUserEmail(user.Email)
+	if taken, err := isEmailTakenByOther(DB, user.Email, 0); err != nil {
+		return err
+	} else if taken {
+		return errors.New("email is already taken")
+	}
 	if user.Password != "" {
 		user.Password, err = common.Password2Hash(user.Password)
 		if err != nil {
@@ -454,6 +492,12 @@ func (user *User) Insert(inviterId int) error {
 // Post-creation tasks (sidebar config, logs, inviter rewards) are handled after the transaction commits.
 func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
 	var err error
+	user.Email = normalizeUserEmail(user.Email)
+	if taken, err := isEmailTakenByOther(tx, user.Email, 0); err != nil {
+		return err
+	} else if taken {
+		return errors.New("email is already taken")
+	}
 	if user.Password != "" {
 		user.Password, err = common.Password2Hash(user.Password)
 		if err != nil {
@@ -510,6 +554,12 @@ func (user *User) FinalizeOAuthUserCreation(inviterId int) {
 
 func (user *User) Update(updatePassword bool) error {
 	var err error
+	user.Email = normalizeUserEmail(user.Email)
+	if taken, err := isEmailTakenByOther(DB, user.Email, user.Id); err != nil {
+		return err
+	} else if taken {
+		return errors.New("email is already taken")
+	}
 	if updatePassword {
 		user.Password, err = common.Password2Hash(user.Password)
 		if err != nil {
@@ -647,7 +697,7 @@ func (user *User) FillUserByEmail() error {
 	if user.Email == "" {
 		return errors.New("email 为空！")
 	}
-	DB.Where(User{Email: user.Email}).First(user)
+	DB.Where("LOWER(email) = LOWER(?)", normalizeUserEmail(user.Email)).First(user)
 	return nil
 }
 
@@ -703,7 +753,8 @@ func (user *User) FillUserByTelegramId() error {
 }
 
 func IsEmailAlreadyTaken(email string) bool {
-	return DB.Unscoped().Where("email = ?", email).Find(&User{}).RowsAffected == 1
+	taken, err := isEmailTakenByOther(DB, email, 0)
+	return err == nil && taken
 }
 
 func IsWeChatIdAlreadyTaken(wechatId string) bool {
