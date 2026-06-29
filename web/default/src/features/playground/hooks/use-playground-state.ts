@@ -16,19 +16,18 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+
 import { DEFAULT_CONFIG, DEFAULT_PARAMETER_ENABLED } from '../constants'
 import {
-  loadConfig,
   saveConfig,
-  loadParameterEnabled,
   saveParameterEnabled,
-  loadMessages,
   saveMessages,
-  loadApiKey,
-  saveApiKey,
-  loadApiBaseUrl,
-  saveApiBaseUrl,
+  applyMessageStateUpdate,
+  getInitialParameterEnabled,
+  getInitialPlaygroundConfig,
+  loadMessages,
+  type MessageStateUpdater,
 } from '../lib'
 import type {
   Message,
@@ -38,31 +37,76 @@ import type {
   GroupOption,
 } from '../types'
 
+const MESSAGE_SAVE_DEBOUNCE_MS = 500
+
 /**
  * Main state management hook for playground
  */
 export function usePlaygroundState() {
   // Load initial state from localStorage
-  const [config, setConfig] = useState<PlaygroundConfig>(() => {
-    const savedConfig = loadConfig()
-    return { ...DEFAULT_CONFIG, ...savedConfig }
-  })
-
-  const [parameterEnabled, setParameterEnabled] = useState<ParameterEnabled>(
-    () => {
-      const saved = loadParameterEnabled()
-      return { ...DEFAULT_PARAMETER_ENABLED, ...saved }
-    }
+  const [config, setConfig] = useState<PlaygroundConfig>(
+    getInitialPlaygroundConfig
   )
 
-  const [messages, setMessages] = useState<Message[]>(() => {
-    return loadMessages() || []
-  })
+  const [parameterEnabled, setParameterEnabled] = useState<ParameterEnabled>(
+    getInitialParameterEnabled
+  )
+
+  const [messages, setMessages] = useState<Message[]>([])
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true)
+  const messagesSaveTimerRef = useRef<number | null>(null)
+  const latestMessagesRef = useRef<Message[]>(messages)
+  const hasLoadedMessagesRef = useRef(false)
 
   const [models, setModels] = useState<ModelOption[]>([])
   const [groups, setGroups] = useState<GroupOption[]>([])
-  const [apiKey, setApiKey] = useState(() => loadApiKey())
-  const [apiBaseUrl, setApiBaseUrl] = useState(() => loadApiBaseUrl())
+
+  const persistMessages = useCallback((messagesToSave: Message[]) => {
+    latestMessagesRef.current = messagesToSave
+
+    if (!hasLoadedMessagesRef.current) {
+      return
+    }
+
+    if (messagesSaveTimerRef.current !== null) {
+      window.clearTimeout(messagesSaveTimerRef.current)
+    }
+
+    messagesSaveTimerRef.current = window.setTimeout(() => {
+      messagesSaveTimerRef.current = null
+      saveMessages(latestMessagesRef.current)
+    }, MESSAGE_SAVE_DEBOUNCE_MS)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    window.setTimeout(() => {
+      const loadedMessages = loadMessages() ?? []
+      if (cancelled) {
+        return
+      }
+
+      latestMessagesRef.current = loadedMessages
+      hasLoadedMessagesRef.current = true
+      setMessages(loadedMessages)
+      setIsLoadingMessages(false)
+    }, 0)
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (messagesSaveTimerRef.current !== null) {
+        window.clearTimeout(messagesSaveTimerRef.current)
+        saveMessages(latestMessagesRef.current)
+      }
+    },
+    []
+  )
 
   // Update config with automatic save
   const updateConfig = useCallback(
@@ -90,39 +134,20 @@ export function usePlaygroundState() {
 
   // Update messages with automatic save
   const updateMessages = useCallback(
-    (updater: Message[] | ((prev: Message[]) => Message[])) => {
+    (updater: MessageStateUpdater) => {
       setMessages((prev) => {
-        const newMessages =
-          typeof updater === 'function' ? updater(prev) : updater
-        saveMessages(newMessages)
+        const newMessages = applyMessageStateUpdate(prev, updater)
+        persistMessages(newMessages)
         return newMessages
       })
     },
-    []
+    [persistMessages]
   )
 
   // Clear all messages
   const clearMessages = useCallback(() => {
     updateMessages([])
   }, [updateMessages])
-
-  const updateApiKey = useCallback((value: string) => {
-    const trimmed = value.trim()
-    setApiKey(trimmed)
-    saveApiKey(trimmed)
-  }, [])
-
-  const updateApiConnection = useCallback(
-    (nextApiKey: string, nextApiBaseUrl: string) => {
-      const trimmedApiKey = nextApiKey.trim()
-      const trimmedApiBaseUrl = nextApiBaseUrl.trim()
-      setApiKey(trimmedApiKey)
-      setApiBaseUrl(trimmedApiBaseUrl)
-      saveApiKey(trimmedApiKey)
-      saveApiBaseUrl(trimmedApiBaseUrl)
-    },
-    []
-  )
 
   // Reset config to defaults
   const resetConfig = useCallback(() => {
@@ -137,10 +162,9 @@ export function usePlaygroundState() {
     config,
     parameterEnabled,
     messages,
+    isLoadingMessages,
     models,
     groups,
-    apiKey,
-    apiBaseUrl,
 
     // Setters
     setModels,
@@ -150,8 +174,6 @@ export function usePlaygroundState() {
     updateConfig,
     updateParameterEnabled,
     updateMessages,
-    updateApiKey,
-    updateApiConnection,
     clearMessages,
     resetConfig,
   }

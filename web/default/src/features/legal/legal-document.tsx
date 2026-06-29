@@ -19,7 +19,14 @@ For commercial licensing, please contact support@quantumnous.com
 import { useQuery } from '@tanstack/react-query'
 import { FileWarning } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { PublicContentPage } from '@/components/layout/components/public-content-page'
+
+import { PublicLayout } from '@/components/layout'
+import { RichContent } from '@/components/rich-content'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
+
 import type { LegalDocumentResponse } from './types'
 
 type LegalDocumentProps = {
@@ -35,36 +42,98 @@ export function LegalDocument({
   fetchDocument,
   emptyMessage,
 }: LegalDocumentProps) {
+  const { t } = useTranslation()
   const { data, isLoading } = useQuery({
     queryKey: [queryKey],
     queryFn: fetchDocument,
     staleTime: 10 * 60 * 1000,
   })
 
-  const rawContent = data?.data ?? ''
-  const hasContent = rawContent.trim().length > 0
-  const content = data?.success && hasContent ? rawContent : ''
+  const rawContent = data?.data?.trim() ?? ''
+  const hasContent = rawContent.length > 0
+  const isUrl = hasContent && isHttpUrl(rawContent)
+  const success = data?.success ?? false
+
+  if (isLoading) {
+    return (
+      <PublicLayout>
+        <div className='mx-auto flex max-w-4xl flex-col gap-4 py-12'>
+          <Skeleton className='h-8 w-[45%]' />
+          <Skeleton className='h-4 w-full' />
+          <Skeleton className='h-4 w-[90%]' />
+          <Skeleton className='h-4 w-[80%]' />
+        </div>
+      </PublicLayout>
+    )
+  }
+
+  if (!success || !hasContent) {
+    return (
+      <PublicLayout>
+        <div className='mx-auto max-w-2xl py-12'>
+          <Card className='border-dashed'>
+            <CardHeader className='flex flex-row items-center gap-4'>
+              <div className='bg-muted rounded-lg p-2'>
+                <FileWarning className='text-muted-foreground h-5 w-5' />
+              </div>
+              <div className='space-y-1'>
+                <CardTitle className='text-lg font-semibold'>{title}</CardTitle>
+                <p className='text-muted-foreground text-sm'>
+                  {data?.message || emptyMessage}
+                </p>
+              </div>
+            </CardHeader>
+          </Card>
+        </div>
+      </PublicLayout>
+    )
+  }
+
+  if (isUrl) {
+    return (
+      <PublicLayout>
+        <div className='mx-auto max-w-2xl py-12'>
+          <Card>
+            <CardHeader>
+              <CardTitle>{title}</CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <p className='text-muted-foreground text-sm'>
+                {t(
+                  'The administrator configured an external link for this document.'
+                )}
+              </p>
+              <Button
+                render={
+                  <a
+                    href={rawContent}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                  />
+                }
+              >
+                {t('View document')}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </PublicLayout>
+    )
+  }
 
   return (
-    <PublicContentPage
-      title={title}
-      content={content}
-      isLoading={isLoading}
-      emptyState={
-        <div className='mx-auto max-w-2xl py-12'>
-          <div className='flex items-center gap-4 rounded-[2rem] border border-slate-200/80 bg-white/70 px-6 py-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5'>
-            <div className='bg-muted rounded-2xl p-3'>
-              <FileWarning className='text-muted-foreground h-5 w-5' />
-            </div>
-            <div className='space-y-1'>
-              <h2 className='text-lg font-semibold'>{title}</h2>
-              <p className='text-muted-foreground text-sm'>
-                {data?.message || emptyMessage}
-              </p>
-            </div>
-          </div>
+    <PublicLayout>
+      <div className='mx-auto max-w-4xl space-y-6 py-12'>
+        <div className='space-y-2'>
+          <h1 className='text-3xl font-semibold tracking-tight'>{title}</h1>
         </div>
-      }
-    />
+
+        <RichContent
+          mode={isLikelyHtml(rawContent) ? 'html' : 'markdown'}
+          content={rawContent}
+          className='prose-neutral dark:prose-invert max-w-none'
+        />
+      </div>
+    </PublicLayout>
   )
 }
