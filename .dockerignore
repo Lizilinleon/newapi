@@ -7,6 +7,13 @@ Makefile
 docs
 .eslintcache
 .gocache
+.env
+data
+logs
+upload
+tiktoken_cache
+plans
+build
 /web/node_modules
 /web/default/node_modules
 /web/default/dist

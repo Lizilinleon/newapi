@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -54,31 +55,99 @@ var DB *gorm.DB
 
 var LOG_DB *gorm.DB
 
-func createRootAccountIfNeed() error {
-	var user User
-	//if user.Status != common.UserStatusEnabled {
-	if err := DB.First(&user).Error; err != nil {
-		common.SysLog("no user exists, create a root user for you: username is Root User, password is lzl20030914")
-		hashedPassword, err := common.Password2Hash("lzl20030914")
-		if err != nil {
-			return err
-		}
-		rootUser := User{
-			Username:    "Root User",
-			Password:    hashedPassword,
-			Role:        common.RoleRootUser,
-			Status:      common.UserStatusEnabled,
-			DisplayName: "Root User",
-			Email:       "2848953615@qq.com",
-			AccessToken: nil,
-			Quota:       100000000,
-		}
-		DB.Create(&rootUser)
+type AdminSeedConfig struct {
+	Username    string `json:"username"`
+	Password    string `json:"password"`
+	Email       string `json:"email"`
+	DisplayName string `json:"display_name"`
+	Quota       int    `json:"quota"`
+}
+
+func adminSeedConfigPath() string {
+	if path := strings.TrimSpace(os.Getenv("ADMIN_CONFIG_PATH")); path != "" {
+		return path
 	}
+	return "admin-config.json"
+}
+
+func loadAdminSeedConfig() (*AdminSeedConfig, string, error) {
+	path := adminSeedConfigPath()
+	file, err := os.Open(path)
+	if err != nil && !filepath.IsAbs(path) {
+		path = filepath.Join("/data", path)
+		file, err = os.Open(path)
+	}
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, path, nil
+		}
+		return nil, path, err
+	}
+	defer file.Close()
+
+	var config AdminSeedConfig
+	if err := common.DecodeJson(file, &config); err != nil {
+		return nil, path, err
+	}
+	config.Username = strings.TrimSpace(config.Username)
+	config.Email = strings.TrimSpace(config.Email)
+	config.DisplayName = strings.TrimSpace(config.DisplayName)
+	return &config, path, nil
+}
+
+func createRootAccountFromConfigIfNeed() error {
+	if RootUserExists() {
+		return nil
+	}
+
+	config, path, err := loadAdminSeedConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load admin seed config %s: %w", path, err)
+	}
+	if config == nil {
+		common.SysLog("admin seed config not found, skip automatic root user creation")
+		return nil
+	}
+	if config.Username == "" || config.Password == "" || config.Email == "" {
+		return fmt.Errorf("admin seed config %s requires username, password and email", path)
+	}
+
+	hashedPassword, err := common.Password2Hash(config.Password)
+	if err != nil {
+		return err
+	}
+	displayName := config.DisplayName
+	if displayName == "" {
+		displayName = config.Username
+	}
+	quota := config.Quota
+	if quota <= 0 {
+		quota = 100000000
+	}
+
+	rootUser := User{
+		Username:    config.Username,
+		Password:    hashedPassword,
+		Role:        common.RoleRootUser,
+		Status:      common.UserStatusEnabled,
+		DisplayName: displayName,
+		Email:       config.Email,
+		AccessToken: nil,
+		Quota:       quota,
+		AffCode:     common.GetRandomString(4),
+	}
+	if err := DB.Create(&rootUser).Error; err != nil {
+		return err
+	}
+	common.SysLog(fmt.Sprintf("created root user from admin seed config: username is %s", config.Username))
 	return nil
 }
 
 func CheckSetup() {
+	if err := createRootAccountFromConfigIfNeed(); err != nil {
+		common.SysLog("failed to create root user from admin seed config: " + err.Error())
+	}
+
 	setup := GetSetup()
 	if setup == nil {
 		// No setup record exists, check if we have a root user

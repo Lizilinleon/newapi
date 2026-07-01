@@ -141,13 +141,13 @@ export function ProfileHeader({ profile, loading }: ProfileHeaderProps) {
                 <span className='truncate'>@{profile.username}</span>
                 {profile.email && (
                   <>
-                    <span>?</span>
+                    <span aria-hidden='true'>·</span>
                     <span className='truncate'>{profile.email}</span>
                   </>
                 )}
                 {profile.group && (
                   <>
-                    <span>?</span>
+                    <span aria-hidden='true'>·</span>
                     <span className='truncate'>{profile.group}</span>
                   </>
                 )}

@@ -1,24 +1,18 @@
 import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
-  AzureAI,
-  Claude,
-  Cohere,
+  Baichuan,
   DeepSeek,
-  Gemini,
-  Grok,
   Hunyuan,
-  Midjourney,
   Minimax,
   Moonshot,
-  OpenAI,
   Qwen,
+  SenseNova,
   Spark,
-  Suno,
+  Stepfun,
   Volcengine,
   Wenxin,
-  XAI,
-  Xinference,
+  Yi,
   Zhipu,
 } from '@lobehub/icons'
 import {
@@ -42,24 +36,18 @@ const endpoints = ['/v1/chat/completions', '/v1/responses', '/v1/embeddings']
 
 const providerIcons = [
   Moonshot,
-  OpenAI,
-  XAI,
   Zhipu.Color,
   Volcengine.Color,
-  Cohere.Color,
-  Claude,
-  Gemini.Color,
-  Grok,
-  Suno,
   Qwen.Color,
   DeepSeek.Color,
   Spark.Color,
-  Midjourney,
   Hunyuan.Color,
-  AzureAI.Color,
   Wenxin.Color,
   Minimax.Color,
-  Xinference,
+  Baichuan.Color,
+  Yi.Color,
+  Stepfun.Color,
+  SenseNova.Color,
 ]
 
 type HomeHeroOverrides = {
@@ -177,16 +165,6 @@ export function LegacyHome() {
     heroOverrides.providersTitle || t('Supports many large model providers')
   const primaryButtonIsExternal = /^https?:\/\//i.test(primaryButtonUrl)
   const secondaryButtonIsExternal = /^https?:\/\//i.test(secondaryButtonUrl)
-  const footerColumns = [
-    {
-      title: '',
-      links: [
-        { text: t('User Agreement'), href: '/user-agreement' },
-        { text: t('Privacy Policy'), href: '/privacy-policy' },
-      ],
-    },
-  ]
-
   const copyServerAddress = async () => {
     await navigator.clipboard.writeText(serverAddress)
     toast.success(t('Copied to clipboard'))
@@ -260,7 +238,7 @@ export function LegacyHome() {
               <Button
                 variant='outline'
                 className='h-11 rounded-full border-slate-300 bg-white px-6 text-base font-bold text-slate-950 shadow-sm hover:bg-slate-100 dark:border-white/20 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200'
-                render={<Link to='/sign-in' />}
+                render={<Link to='/enterprise' />}
               >
                 {t('Login')}
               </Button>
@@ -366,26 +344,27 @@ export function LegacyHome() {
               <p className='bg-gradient-to-r from-slate-500 via-sky-600 to-violet-600 bg-clip-text text-xl text-transparent md:text-2xl dark:from-slate-300 dark:via-cyan-200 dark:to-fuchsia-300'>
                 {providersTitle}
               </p>
-              <div className='mx-auto mt-9 flex max-w-4xl flex-wrap items-center justify-center gap-7 rounded-[2rem] bg-white/30 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur md:gap-10 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'>
+              <div className='mx-auto mt-9 flex max-w-5xl flex-nowrap items-center justify-between gap-4 overflow-hidden rounded-[2rem] bg-white/30 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur sm:gap-5 md:px-7 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'>
                 {providerIcons.map((Icon, index) => (
                   <div
                     key={index}
-                    className='flex size-10 items-center justify-center md:size-12'
+                    className='flex size-8 shrink-0 items-center justify-center sm:size-9 md:size-10'
                   >
-                    <Icon size={40} />
+                    <Icon size={34} />
                   </div>
                 ))}
-                <span className='text-xl font-black'>30+</span>
+                <span className='shrink-0 text-lg font-black md:text-xl'>30+</span>
               </div>
             </div>
           </div>
         </section>
         <Footer
           name={systemName}
-          columns={footerColumns}
+          columns={[]}
           className='border-0 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.22),transparent_24%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(17,24,39,0.98))] text-white'
           copyright='All rights reserved.'
           inverse
+          centered
           description={[
             t('Enterprise-ready large model gateway for unified model access.'),
             t('Stable routing, account management, billing control, and compliance-ready access experience.'),

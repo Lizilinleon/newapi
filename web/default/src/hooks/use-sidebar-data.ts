@@ -25,7 +25,6 @@ import {
   FlaskConical,
   Key,
   ListTodo,
-  MessageSquare,
   Radio,
   ServerCog,
   Settings,
@@ -109,17 +108,12 @@ export function useSidebarData(): SidebarData {
     navGroups: [
       {
         id: 'chat',
-        title: t('Chat'),
+        title: '测试',
         items: [
           {
             title: t('Playground'),
             url: '/playground',
             icon: FlaskConical,
-          },
-          {
-            title: t('Chat'),
-            icon: MessageSquare,
-            type: 'chat-presets',
           },
         ],
       },

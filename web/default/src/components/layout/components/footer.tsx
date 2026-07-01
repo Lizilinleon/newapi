@@ -108,7 +108,7 @@ function LegalLinks(props: { leadingSeparator?: boolean }) {
           )}
           <Link
             to={item.href}
-            className='hover:text-foreground transition-colors duration-200'
+            className='underline underline-offset-4 transition-colors duration-200 hover:text-foreground'
           >
             {item.label}
           </Link>
@@ -245,7 +245,8 @@ export function Footer(props: FooterProps) {
             </Link>
             <div
               className={cn(
-                'text-muted-foreground/60 mt-4 max-w-[420px] space-y-3 text-xl leading-relaxed',
+                'text-muted-foreground/60 mt-4 space-y-3 text-xl leading-relaxed',
+                centered ? 'max-w-[820px]' : 'max-w-[420px]',
                 inverse && 'text-white/68',
                 centered && 'mx-auto text-center'
               )}

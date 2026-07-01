@@ -16,12 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useEffect, useState } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { BookOpen, Monitor } from 'lucide-react'
+import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import { useNotifications } from '@/hooks/use-notifications'
+import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
 import { Button } from '@/components/ui/button'
@@ -61,13 +63,13 @@ export function PublicHeader(props: PublicHeaderProps) {
     homeUrl = '/',
     showAuthButtons = true,
     showNotifications = true,
+    className,
   } = props
 
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [scrolled, setScrolled] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
   const { auth } = useAuthStore()
+  const { status } = useStatus()
   const {
     systemName,
     logo: systemLogo,
@@ -83,25 +85,18 @@ export function PublicHeader(props: PublicHeaderProps) {
   const isAuthenticated = !!user
   const displaySiteName = customSiteName || systemName
   const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
+  const docsLink = (status?.docs_link as string | undefined) || '/about'
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : ''
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [mobileOpen])
+  const navLinkClass =
+    'rounded-full px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:bg-gradient-to-r hover:text-blue-800 dark:text-slate-300 dark:hover:text-cyan-100'
+  const loginLinkClass =
+    'h-11 rounded-full border-slate-300 bg-white px-6 text-base font-bold text-slate-950 shadow-sm hover:bg-slate-100 dark:border-white/20 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200'
+  const registerLinkClass =
+    'h-11 rounded-full bg-slate-950 px-6 text-base font-bold text-white shadow-sm hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200'
 
   const handleNavLinkClick = (
     event: React.MouseEvent<HTMLAnchorElement>,
-    link: TopNavLink,
-    closeMobile = false
+    link: TopNavLink
   ) => {
     if (link.disabled) {
       event.preventDefault()
@@ -110,206 +105,57 @@ export function PublicHeader(props: PublicHeaderProps) {
 
     if (link.requiresAuth) {
       event.preventDefault()
-      if (closeMobile) {
-        setMobileOpen(false)
-      }
       navigate({ to: link.href })
-      return
-    }
-
-    if (closeMobile) {
-      setMobileOpen(false)
     }
   }
 
   return (
-    <>
-      <header className='pointer-events-none fixed inset-x-0 top-0 z-50'>
-        <div
-          className={cn(
-            'pointer-events-auto mx-auto transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]',
-            scrolled ? 'max-w-[52rem] px-3 pt-3' : 'max-w-7xl px-4 pt-0 md:px-6'
-          )}
-        >
-          <nav
-            className={cn(
-              'flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]',
-              scrolled
-                ? 'bg-background/60 ring-border/50 h-12 rounded-2xl pr-1.5 pl-4 shadow-[0_2px_16px_-6px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.02)] ring-[0.5px] backdrop-blur-2xl dark:shadow-[0_2px_16px_-6px_rgba(0,0,0,0.4)]'
-                : 'h-16 px-2'
-            )}
+    <header
+      className={cn(
+        'fixed inset-x-0 top-0 z-50 border-b border-white/40 bg-white/68 shadow-[0_12px_44px_-28px_rgba(14,165,233,0.95)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/58 dark:shadow-none',
+        className
+      )}
+    >
+      <div className='flex h-20 items-center justify-between px-4 md:px-8'>
+        <div className='flex min-w-0 items-center gap-8'>
+          <Link
+            to={homeUrl}
+            className='flex cursor-pointer select-none items-center gap-3 rounded-full bg-white/50 py-1.5 pr-5 pl-2 shadow-sm ring-1 ring-white/70 transition hover:bg-white/75 hover:shadow-[0_18px_48px_-30px_rgba(14,165,233,0.95)] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-white/5 dark:ring-white/10 dark:hover:bg-white/10'
+            aria-label={t('Back to home')}
+            title={t('Back to home')}
           >
-            {/* Logo */}
-            <Link
-              to={homeUrl}
-              className='group flex shrink-0 items-center gap-2.5'
-            >
-              <div className='flex size-7 shrink-0 items-center justify-center transition-all duration-300 group-hover:scale-105'>
-                {loading ? (
-                  <Skeleton className='size-full rounded-lg' />
-                ) : customLogo ? (
-                  customLogo
-                ) : (
-                  <HeaderLogo
-                    src={systemLogo}
-                    loading={loading}
-                    logoLoaded={logoLoaded}
-                    className='size-full rounded-lg object-contain'
-                  />
-                )}
-              </div>
-              <span className='text-sm font-semibold tracking-tight'>
-                {loading ? <Skeleton className='h-4 w-16' /> : displaySiteName}
-              </span>
-            </Link>
-
-            {/* Desktop nav */}
-            <div className='hidden items-center gap-0.5 sm:flex'>
-              {links.map((link, i) => {
-                const isActive = pathname === link.href
-                if (link.external) {
-                  return (
-                    <a
-                      key={i}
-                      href={link.href}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      aria-disabled={link.disabled}
-                      tabIndex={link.disabled ? -1 : undefined}
-                      onClick={(event) => handleNavLinkClick(event, link)}
-                      className={cn(
-                        'text-muted-foreground hover:text-foreground rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors duration-200',
-                        link.disabled && 'pointer-events-none opacity-50'
-                      )}
-                    >
-                      {t(link.title)}
-                    </a>
-                  )
-                }
-                return (
-                  <Link
-                    key={i}
-                    to={link.href}
-                    disabled={link.disabled}
-                    onClick={(event) => handleNavLinkClick(event, link)}
-                    className={cn(
-                      'rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors duration-200',
-                      isActive
-                        ? 'text-foreground'
-                        : 'text-muted-foreground hover:text-foreground',
-                      link.disabled && 'pointer-events-none opacity-50'
-                    )}
-                  >
-                    {t(link.title)}
-                  </Link>
-                )
-              })}
-
-              {(showLanguageSwitcher ||
-                showThemeSwitch ||
-                showNotifications) && (
-                <div className='bg-border/40 mx-2 h-4 w-px' />
-              )}
-
-              {showLanguageSwitcher && <LanguageSwitcher />}
-              {showThemeSwitch && <ThemeSwitch />}
-              {showNotifications && (
-                <NotificationPopover
-                  open={notifications.popoverOpen}
-                  onOpenChange={notifications.setPopoverOpen}
-                  unreadCount={notifications.unreadCount}
-                  activeTab={notifications.activeTab}
-                  onTabChange={notifications.setActiveTab}
-                  notice={notifications.notice}
-                  announcements={notifications.announcements}
-                  loading={notifications.loading}
+            <div className='relative size-10 shrink-0'>
+              {loading ? (
+                <Skeleton className='absolute inset-0 rounded-xl' />
+              ) : customLogo ? (
+                customLogo
+              ) : (
+                <HeaderLogo
+                  src={systemLogo}
+                  loading={loading}
+                  logoLoaded={logoLoaded}
+                  className='size-10 rounded-xl object-contain'
                 />
               )}
-
-              {showAuthButtons && (
-                <>
-                  <div className='bg-border/40 mx-1 h-4 w-px' />
-                  {loading ? (
-                    <Skeleton className='h-8 w-20 rounded-lg' />
-                  ) : isAuthenticated ? (
-                    <ProfileDropdown />
-                  ) : (
-                    <Button
-                      size='sm'
-                      className='h-8 rounded-lg px-3.5 text-xs font-medium'
-                      render={<Link to='/enterprise' />}
-                    >
-                      {t('Enterprise')}
-                    </Button>
-                  )}
-                </>
-              )}
             </div>
+            {loading ? (
+              <Skeleton className='h-7 w-28' />
+            ) : (
+              <h1 className='bg-gradient-to-r from-slate-900 via-blue-700 to-rose-600 bg-clip-text text-2xl font-black tracking-tight whitespace-nowrap text-transparent dark:from-white dark:via-cyan-200 dark:to-rose-200'>
+                {displaySiteName}
+              </h1>
+            )}
+          </Link>
 
-            {/* Mobile: compact actions + hamburger */}
-            <div className='flex items-center gap-2 sm:hidden'>
-              {showThemeSwitch && <ThemeSwitch />}
-              {showAuthButtons && !loading && isAuthenticated && (
-                <ProfileDropdown />
-              )}
-              <Button
-                type='button'
-                variant='ghost'
-                size='icon'
-                className='size-9'
-                onClick={() => setMobileOpen((v) => !v)}
-                aria-label={t('Toggle navigation menu')}
-              >
-                <div className='relative size-4'>
-                  <span
-                    className={cn(
-                      'absolute inset-x-0 block h-[1.5px] origin-center rounded-full bg-current transition-all duration-300',
-                      mobileOpen ? 'top-[7px] rotate-45' : 'top-[3px]'
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      'absolute inset-x-0 top-[7px] block h-[1.5px] rounded-full bg-current transition-all duration-300',
-                      mobileOpen ? 'scale-x-0 opacity-0' : 'opacity-100'
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      'absolute inset-x-0 block h-[1.5px] origin-center rounded-full bg-current transition-all duration-300',
-                      mobileOpen ? 'top-[7px] -rotate-45' : 'top-[11px]'
-                    )}
-                  />
-                </div>
-              </Button>
-            </div>
-          </nav>
-        </div>
-      </header>
-
-      {/* Mobile full-screen overlay */}
-      <div
-        className={cn(
-          'bg-background/98 fixed inset-0 z-40 backdrop-blur-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:pointer-events-none sm:hidden',
-          mobileOpen
-            ? 'pointer-events-auto opacity-100'
-            : 'pointer-events-none opacity-0'
-        )}
-      >
-        <div className='flex h-full flex-col justify-between px-8 pt-20 pb-10'>
-          <nav className='flex flex-col gap-1'>
+          <nav className='hidden items-center gap-1.5 rounded-full border border-white/70 bg-white/52 p-1.5 shadow-[0_14px_40px_-28px_rgba(14,165,233,0.95)] backdrop-blur-xl lg:flex dark:border-white/10 dark:bg-white/5'>
             {links.map((link, i) => {
               const isActive = pathname === link.href
               const linkClassName = cn(
-                'flex items-center gap-3 py-3 text-base font-medium tracking-tight transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
-                mobileOpen
-                  ? 'translate-y-0 opacity-100'
-                  : 'translate-y-4 opacity-0',
-                isActive ? 'text-foreground' : 'text-muted-foreground',
+                navLinkClass,
+                isActive && 'bg-white/65 text-blue-800 shadow-sm dark:bg-white/10 dark:text-cyan-100',
                 link.disabled && 'pointer-events-none opacity-50'
               )
-              const transitionStyle = {
-                transitionDelay: mobileOpen ? `${100 + i * 50}ms` : '0ms',
-              }
+
               if (link.external) {
                 return (
                   <a
@@ -319,50 +165,91 @@ export function PublicHeader(props: PublicHeaderProps) {
                     rel='noopener noreferrer'
                     aria-disabled={link.disabled}
                     tabIndex={link.disabled ? -1 : undefined}
-                    onClick={(event) => handleNavLinkClick(event, link, true)}
+                    onClick={(event) => handleNavLinkClick(event, link)}
                     className={linkClassName}
-                    style={transitionStyle}
                   >
                     {t(link.title)}
                   </a>
                 )
               }
+
               return (
                 <Link
                   key={i}
                   to={link.href}
                   disabled={link.disabled}
-                  onClick={(event) => handleNavLinkClick(event, link, true)}
+                  onClick={(event) => handleNavLinkClick(event, link)}
                   className={linkClassName}
-                  style={transitionStyle}
                 >
                   {t(link.title)}
                 </Link>
               )
             })}
           </nav>
+        </div>
 
-          <div
-            className={cn(
-              'flex flex-col gap-3 transition-all duration-500',
-              mobileOpen
-                ? 'translate-y-0 opacity-100'
-                : 'translate-y-4 opacity-0'
-            )}
-            style={{ transitionDelay: mobileOpen ? '250ms' : '0ms' }}
+        <div className='flex items-center gap-2.5'>
+          <Button
+            variant='ghost'
+            size='icon-lg'
+            aria-label={t('Docs')}
+            className='hidden rounded-full sm:inline-flex'
+            render={
+              docsLink.startsWith('http') ? (
+                <a href={docsLink} target='_blank' rel='noopener noreferrer' />
+              ) : (
+                <Link to={docsLink} />
+              )
+            }
           >
-            {showAuthButtons && (
-              <Link
-                to='/enterprise'
-                onClick={() => setMobileOpen(false)}
-                className='bg-foreground text-background inline-flex h-10 items-center justify-center rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:opacity-80'
-              >
-                {t('Enterprise')}
-              </Link>
-            )}
-          </div>
+            <BookOpen />
+          </Button>
+          <Button
+            variant='ghost'
+            size='icon-lg'
+            aria-label={t('Display')}
+            className='hidden rounded-full sm:inline-flex'
+          >
+            <Monitor />
+          </Button>
+          {showLanguageSwitcher && <LanguageSwitcher />}
+          {showThemeSwitch && <ThemeSwitch />}
+          {showNotifications && isAuthenticated && (
+            <NotificationPopover
+              open={notifications.popoverOpen}
+              onOpenChange={notifications.setPopoverOpen}
+              unreadCount={notifications.unreadCount}
+              activeTab={notifications.activeTab}
+              onTabChange={notifications.setActiveTab}
+              notice={notifications.notice}
+              announcements={notifications.announcements}
+              loading={notifications.loading}
+            />
+          )}
+          {showAuthButtons &&
+            (loading ? (
+              <Skeleton className='h-12 w-40 rounded-full' />
+            ) : isAuthenticated ? (
+              <ProfileDropdown />
+            ) : (
+              <div className='flex items-center gap-2 rounded-full border border-white/70 bg-white/52 p-1.5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/5'>
+                <Button
+                  variant='outline'
+                  className={loginLinkClass}
+                  render={<Link to='/sign-in' />}
+                >
+                  {t('Login')}
+                </Button>
+                <Button
+                  className={registerLinkClass}
+                  render={<Link to='/sign-up' />}
+                >
+                  {t('Register')}
+                </Button>
+              </div>
+            ))}
         </div>
       </div>
-    </>
+    </header>
   )
 }
