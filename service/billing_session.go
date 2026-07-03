@@ -237,6 +237,12 @@ func (s *BillingSession) reserveFunding(delta int) error {
 		}
 		funding.consumed += delta
 		return nil
+	case *EnterpriseMemberFunding:
+		if err := model.DecreaseEnterpriseMemberRemainQuota(funding.memberUserId, funding.enterpriseId, delta); err != nil {
+			return types.NewError(err, types.ErrorCodeUpdateDataError, types.ErrOptionWithSkipRetry())
+		}
+		funding.consumed += delta
+		return nil
 	case *SubscriptionFunding:
 		if err := model.PostConsumeUserSubscriptionDelta(funding.subscriptionId, int64(delta)); err != nil {
 			return types.NewErrorWithStatusCode(
@@ -258,6 +264,12 @@ func (s *BillingSession) rollbackFundingReserve(delta int) {
 	case *WalletFunding:
 		if err := model.IncreaseUserQuota(funding.userId, delta, false); err != nil {
 			common.SysLog("error rolling back wallet funding reserve: " + err.Error())
+		} else {
+			funding.consumed -= delta
+		}
+	case *EnterpriseMemberFunding:
+		if err := model.IncreaseEnterpriseMemberRemainQuota(funding.memberUserId, funding.enterpriseId, delta); err != nil {
+			common.SysLog("error rolling back enterprise funding reserve: " + err.Error())
 		} else {
 			funding.consumed -= delta
 		}
@@ -303,6 +315,8 @@ func (s *BillingSession) shouldTrust(c *gin.Context) bool {
 	switch s.funding.Source() {
 	case BillingSourceWallet:
 		return s.relayInfo.BillingUserQuota > trustQuota
+	case BillingSourceEnterprise:
+		return s.relayInfo.BillingUserQuota > trustQuota
 	case BillingSourceSubscription:
 		// 订阅不能启用信任旁路。原因：
 		// 1. PreConsumeUserSubscription 要求 amount>0 来创建预扣记录并锁定订阅
@@ -342,6 +356,38 @@ func (s *BillingSession) syncRelayInfo() {
 func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preConsumedQuota int) (*BillingSession, *types.NewAPIError) {
 	if relayInfo == nil {
 		return nil, types.NewError(fmt.Errorf("relayInfo is nil"), types.ErrorCodeInvalidRequest, types.ErrOptionWithSkipRetry())
+	}
+
+	if relayInfo.EnterpriseId > 0 {
+		memberQuota, err := model.GetEnterpriseMemberRemainQuota(relayInfo.UserId, relayInfo.EnterpriseId)
+		if err != nil {
+			return nil, types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
+		}
+		if memberQuota <= 0 {
+			return nil, types.NewErrorWithStatusCode(
+				fmt.Errorf("enterprise member quota is insufficient, remaining quota: %s", logger.FormatQuota(memberQuota)),
+				types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
+				types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
+		}
+		if memberQuota-preConsumedQuota < 0 {
+			return nil, types.NewErrorWithStatusCode(
+				fmt.Errorf("enterprise member quota pre-consume failed, remaining quota: %s, required quota: %s", logger.FormatQuota(memberQuota), logger.FormatQuota(preConsumedQuota)),
+				types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
+				types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
+		}
+		relayInfo.UserQuota = memberQuota
+		relayInfo.BillingUserQuota = memberQuota
+		session := &BillingSession{
+			relayInfo: relayInfo,
+			funding: &EnterpriseMemberFunding{
+				memberUserId: relayInfo.UserId,
+				enterpriseId: relayInfo.EnterpriseId,
+			},
+		}
+		if apiErr := session.preConsume(c, preConsumedQuota); apiErr != nil {
+			return nil, apiErr
+		}
+		return session, nil
 	}
 
 	billingId := billingUserId(relayInfo)
@@ -433,7 +479,15 @@ func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preCons
 		session, apiErr := trySubscription()
 		if apiErr != nil {
 			if apiErr.GetErrorCode() == types.ErrorCodeInsufficientUserQuota {
-				return tryWallet()
+				// 仅当用户的活跃订阅允许钱包回退时才回退到钱包，否则返回订阅额度不足错误
+				allowOverflow, overflowErr := model.UserActiveSubscriptionsAllowWalletOverflow(relayInfo.UserId)
+				if overflowErr != nil {
+					return nil, types.NewError(overflowErr, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
+				}
+				if allowOverflow {
+					return tryWallet()
+				}
+				return nil, apiErr
 			}
 			return nil, apiErr
 		}

@@ -1,0 +1,30 @@
+---
+{
+  "title": "上下文窗口 (Context Window)",
+  "source_url": "https://docs.weelinking.com/docs/wiki/basics/context-window",
+  "description": "上下文窗口概念详解，了解 weelinking 大模型API中转平台各模型的上下文能力",
+  "fetched_at": "2026-07-02T06:34:51.354716+00:00"
+}
+---
+
+# 上下文窗口 (Context Window)
+
+上下文窗口（Context Window）是指大语言模型在一次对话中能够处理的最大 Token 数量。它包括了\*\*输入（Input）**和**输出（Output）\*\*的总和。
+
+## 意义[​](https://docs.weelinking.com/docs/wiki/basics/context-window#意义 "意义的直接链接")
+
+上下文窗口的大小直接决定了模型的“短期记忆”能力。
+
+- **窗口小（如 4k, 8k）：** 模型记不住太久之前的对话，适合短对话或简单任务。
+- **窗口大（如 128k, 1M, 2M）：** 模型可以阅读整本书、分析长篇财报、处理超长代码库，或者维持长达数小时的深度对话。
+
+## 滑动窗口[​](https://docs.weelinking.com/docs/wiki/basics/context-window#滑动窗口 "滑动窗口的直接链接")
+
+当对话内容超过了上下文窗口的限制时，模型通常会采用“滑动窗口”机制，即**遗忘最早的内容**，以便腾出空间给最新的内容。这意味着前面的对话信息会丢失。
+
+## 常见模型的窗口大小[​](https://docs.weelinking.com/docs/wiki/basics/context-window#常见模型的窗口大小 "常见模型的窗口大小的直接链接")
+
+- **GPT-4o:** 128k
+- **Claude 3.5 Sonnet:** 200k
+- **Gemini 1.5 Pro:** 1M ~ 2M
+- **Llama 3:** 8k ~ 128k

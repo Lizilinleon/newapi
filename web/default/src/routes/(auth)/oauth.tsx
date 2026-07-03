@@ -42,7 +42,7 @@ function OAuthComponent() {
         const res = await getSelf()
         if (res?.success) {
           useAuthStore.getState().auth.setUser(res.data as AuthUser)
-          const target = search?.redirect || '/dashboard'
+          const target = search?.redirect || '/enterprise'
           navigate({ to: target, replace: true })
           return
         }
@@ -50,7 +50,7 @@ function OAuthComponent() {
         /* empty */
       }
       toast.error(i18next.t('OAuth failed'))
-      navigate({ to: '/dashboard', replace: true })
+      navigate({ to: '/enterprise', replace: true })
     })()
   }, [navigate, search])
 

@@ -27,7 +27,7 @@ interface CTAProps {
   isAuthenticated?: boolean
 }
 
-export function CTA(props: CTAProps) {
+export function CTA(_props: CTAProps) {
   const { t } = useTranslation()
 
   return (
@@ -61,8 +61,8 @@ export function CTA(props: CTAProps) {
           )}
         </p>
         <div className='mt-8 flex items-center justify-center gap-3'>
-          <Button className='group rounded-lg' render={<Link to='/dashboard' />}>
-            {props.isAuthenticated ? t('Go to Dashboard') : t('Enter Console')}
+          <Button className='group rounded-lg' render={<Link to='/enterprise' />}>
+            {t('Enterprise')}
             <ArrowRight className='ml-1 size-3.5 transition-transform duration-200 group-hover:translate-x-0.5' />
           </Button>
         </div>

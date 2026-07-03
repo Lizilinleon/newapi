@@ -221,9 +221,9 @@ export function SetupWizard() {
     if (!password || password.length < 8) {
       form.setError('password', {
         type: 'manual',
-        message: t('Password must be at least 8 characters long'),
+        message: t('Password must be at least 8 characters'),
       })
-      toast.error(t('Password must be at least 8 characters long'))
+      toast.error(t('Password must be at least 8 characters'))
       return false
     }
 
@@ -290,7 +290,7 @@ export function SetupWizard() {
               <img
                 src={logo}
                 alt={t('System logo')}
-                className='h-12 w-12 rounded-full object-cover shadow-sm'
+                className='h-12 w-12 rounded-full object-contain shadow-sm'
               />
             )}
           </div>

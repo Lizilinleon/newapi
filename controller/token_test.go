@@ -48,21 +48,21 @@ type sqliteColumnInfo struct {
 }
 
 type legacyToken struct {
-	Id                 int            `gorm:"primaryKey"`
-	UserId             int            `gorm:"index"`
-	Key                string         `gorm:"column:key;type:char(48);uniqueIndex"`
-	Status             int            `gorm:"default:1"`
-	Name               string         `gorm:"index"`
-	CreatedTime        int64          `gorm:"bigint"`
-	AccessedTime       int64          `gorm:"bigint"`
-	ExpiredTime        int64          `gorm:"bigint;default:-1"`
-	RemainQuota        int            `gorm:"default:0"`
+	Id                 int    `gorm:"primaryKey"`
+	UserId             int    `gorm:"index"`
+	Key                string `gorm:"column:key;type:char(48);uniqueIndex"`
+	Status             int    `gorm:"default:1"`
+	Name               string `gorm:"index"`
+	CreatedTime        int64  `gorm:"bigint"`
+	AccessedTime       int64  `gorm:"bigint"`
+	ExpiredTime        int64  `gorm:"bigint;default:-1"`
+	RemainQuota        int    `gorm:"default:0"`
 	UnlimitedQuota     bool
 	ModelLimitsEnabled bool
-	ModelLimits        string         `gorm:"type:text"`
-	AllowIps           *string        `gorm:"default:''"`
-	UsedQuota          int            `gorm:"default:0"`
-	Group              string         `gorm:"column:group;default:''"`
+	ModelLimits        string  `gorm:"type:text"`
+	AllowIps           *string `gorm:"default:''"`
+	UsedQuota          int     `gorm:"default:0"`
+	Group              string  `gorm:"column:group;default:''"`
 	CrossGroupRetry    bool
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
 }
@@ -75,9 +75,7 @@ func openTokenControllerTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
-	common.UsingSQLite = true
-	common.UsingMySQL = false
-	common.UsingPostgreSQL = false
+	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	common.RedisEnabled = false
 
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
@@ -119,22 +117,23 @@ func openTokenControllerExternalDB(t *testing.T, dialect string, dsn string) (*g
 
 	gin.SetMode(gin.TestMode)
 	common.RedisEnabled = false
-	common.UsingSQLite = false
-	common.UsingMySQL = dialect == "mysql"
-	common.UsingPostgreSQL = dialect == "postgres"
 
 	var (
-		db  *gorm.DB
-		err error
+		db     *gorm.DB
+		dbType common.DatabaseType
+		err    error
 	)
 	switch dialect {
 	case "mysql":
+		dbType = common.DatabaseTypeMySQL
 		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	case "postgres":
+		dbType = common.DatabaseTypePostgreSQL
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	default:
 		t.Fatalf("unsupported dialect %q", dialect)
 	}
+	common.SetDatabaseTypes(dbType, dbType)
 	if err != nil {
 		t.Fatalf("failed to open %s db: %v", dialect, err)
 	}
@@ -418,6 +417,38 @@ func TestGetAllTokensMasksKeyInResponse(t *testing.T) {
 	}
 }
 
+func TestGetAllTokensOnlyReturnsPersonalTokens(t *testing.T) {
+	db := setupTokenControllerTestDB(t)
+	token := seedToken(t, db, 1, "personal-token", "abcd1234efgh5678")
+	enterpriseToken := seedToken(t, db, 1, "enterprise-token", "enterprise123456")
+	enterpriseToken.EnterpriseId = 7
+	if err := db.Save(enterpriseToken).Error; err != nil {
+		t.Fatalf("failed to update enterprise token: %v", err)
+	}
+
+	ctx, recorder := newAuthenticatedContext(t, http.MethodGet, "/api/token/?p=1&size=10", nil, 1)
+	GetAllTokens(ctx)
+
+	response := decodeAPIResponse(t, recorder)
+	if !response.Success {
+		t.Fatalf("expected success response, got message: %s", response.Message)
+	}
+
+	var page tokenPageResponse
+	if err := common.Unmarshal(response.Data, &page); err != nil {
+		t.Fatalf("failed to decode token page response: %v", err)
+	}
+	if len(page.Items) != 1 {
+		t.Fatalf("expected only one personal token, got %d", len(page.Items))
+	}
+	if page.Items[0].ID != token.Id {
+		t.Fatalf("expected personal token id %d, got %d", token.Id, page.Items[0].ID)
+	}
+	if strings.Contains(recorder.Body.String(), enterpriseToken.Name) {
+		t.Fatalf("list response included enterprise token: %s", recorder.Body.String())
+	}
+}
+
 func TestSearchTokensMasksKeyInResponse(t *testing.T) {
 	db := setupTokenControllerTestDB(t)
 	token := seedToken(t, db, 1, "searchable-token", "ijkl1234mnop5678")
@@ -442,6 +473,38 @@ func TestSearchTokensMasksKeyInResponse(t *testing.T) {
 	}
 	if strings.Contains(recorder.Body.String(), token.Key) {
 		t.Fatalf("search response leaked raw token key: %s", recorder.Body.String())
+	}
+}
+
+func TestSearchTokensOnlyReturnsPersonalTokens(t *testing.T) {
+	db := setupTokenControllerTestDB(t)
+	token := seedToken(t, db, 1, "personal-search-token", "ijkl1234mnop5678")
+	enterpriseToken := seedToken(t, db, 1, "enterprise-search-token", "enterprise654321")
+	enterpriseToken.EnterpriseId = 7
+	if err := db.Save(enterpriseToken).Error; err != nil {
+		t.Fatalf("failed to update enterprise token: %v", err)
+	}
+
+	ctx, recorder := newAuthenticatedContext(t, http.MethodGet, "/api/token/search?keyword=%25search-token&p=1&size=10", nil, 1)
+	SearchTokens(ctx)
+
+	response := decodeAPIResponse(t, recorder)
+	if !response.Success {
+		t.Fatalf("expected success response, got message: %s", response.Message)
+	}
+
+	var page tokenPageResponse
+	if err := common.Unmarshal(response.Data, &page); err != nil {
+		t.Fatalf("failed to decode search response: %v", err)
+	}
+	if len(page.Items) != 1 {
+		t.Fatalf("expected only one personal search result, got %d", len(page.Items))
+	}
+	if page.Items[0].ID != token.Id {
+		t.Fatalf("expected personal token id %d, got %d", token.Id, page.Items[0].ID)
+	}
+	if strings.Contains(recorder.Body.String(), enterpriseToken.Name) {
+		t.Fatalf("search response included enterprise token: %s", recorder.Body.String())
 	}
 }
 

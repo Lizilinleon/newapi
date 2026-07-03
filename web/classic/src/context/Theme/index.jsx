@@ -47,7 +47,14 @@ const getSystemTheme = () => {
 export const ThemeProvider = ({ children }) => {
   const [theme, _setTheme] = useState(() => {
     try {
-      return localStorage.getItem('theme-mode') || 'auto';
+      const storedTheme = localStorage.getItem('theme-mode');
+      if (storedTheme && storedTheme !== 'auto') return storedTheme;
+
+      const root = document.documentElement;
+      if (root.classList.contains('dark')) return 'dark';
+      if (root.classList.contains('light')) return 'light';
+
+      return storedTheme || 'auto';
     } catch {
       return 'auto';
     }

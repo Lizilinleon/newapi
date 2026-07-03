@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="ArmNet 字元服务">
+  <defs>
+    <linearGradient id="shield" x1="38" y1="20" x2="214" y2="228" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b8cff"/>
+      <stop offset="0.52" stop-color="#04a3b7"/>
+      <stop offset="1" stop-color="#7bd341"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="52%" cy="30%" r="72%">
+      <stop offset="0" stop-color="#54d6ff" stop-opacity=".65"/>
+      <stop offset=".48" stop-color="#16a7d9" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#0a2235" stop-opacity=".36"/>
+    </radialGradient>
+    <filter id="shadow" x="-18%" y="-14%" width="136%" height="136%">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#071826" flood-opacity=".32"/>
+    </filter>
+  </defs>
+
+  <path
+    d="M128 6 20 42c-7 2-12 9-12 17v55c0 63 43 112 120 136 77-24 120-73 120-136V59c0-8-5-15-12-17L128 6Z"
+    fill="url(#shield)"
+    filter="url(#shadow)"
+  />
+  <path
+    d="M128 6 20 42c-7 2-12 9-12 17v55c0 63 43 112 120 136 77-24 120-73 120-136V59c0-8-5-15-12-17L128 6Z"
+    fill="url(#glow)"
+  />
+
+  <path d="M128 36 98 99h19v78h-19l30 47 30-47h-19V99h19L128 36Z" fill="#05090f"/>
+
+  <g fill="none" stroke="#05090f" stroke-linecap="round" stroke-linejoin="round" stroke-width="7">
+    <path d="M83 83 57 105v47l27 21 27-16v-51L83 83Z"/>
+    <path d="M57 105 111 157M57 152l54-46M84 83v90"/>
+    <path d="M173 83 199 105v47l-27 21-27-16v-51l28-23Z"/>
+    <path d="M199 105 145 157m54-5-54-46m27-23v90"/>
+  </g>
+
+  <g fill="#05090f">
+    <circle cx="83" cy="83" r="11"/>
+    <circle cx="57" cy="105" r="11"/>
+    <circle cx="57" cy="152" r="11"/>
+    <circle cx="84" cy="173" r="11"/>
+    <circle cx="111" cy="106" r="8"/>
+    <circle cx="111" cy="157" r="8"/>
+    <circle cx="173" cy="83" r="11"/>
+    <circle cx="199" cy="105" r="11"/>
+    <circle cx="199" cy="152" r="11"/>
+    <circle cx="172" cy="173" r="11"/>
+    <circle cx="145" cy="106" r="8"/>
+    <circle cx="145" cy="157" r="8"/>
+  </g>
+
+  <path
+    d="M54 196c32 30 116 31 149-1"
+    fill="none"
+    stroke="#66d851"
+    stroke-linecap="round"
+    stroke-width="6"
+    opacity=".72"
+  />
+</svg>

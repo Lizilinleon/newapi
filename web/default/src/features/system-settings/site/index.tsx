@@ -23,11 +23,12 @@ import {
   getSiteSectionContent,
   getSiteSectionMeta,
 } from './section-registry.tsx'
+import { DEFAULT_SYSTEM_NAME } from '@/lib/constants'
 
 const defaultSiteSettings: SiteSettings = {
   'theme.frontend': 'default',
   Notice: '',
-  SystemName: 'New API',
+  SystemName: DEFAULT_SYSTEM_NAME,
   Logo: '',
   Footer: '',
   About: '',

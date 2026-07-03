@@ -16,10 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useRef } from 'react'
 import * as z from 'zod'
 import type { Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { ImagePlus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -51,13 +54,33 @@ import { SettingsSection } from '../components/settings-section'
 import { useSettingsForm } from '../hooks/use-settings-form'
 import { useUpdateOption } from '../hooks/use-update-option'
 
+const LOGO_UPLOAD_MAX_SIZE = 512 * 1024
+const LOGO_UPLOAD_MAX_DIMENSION = 512
+const LOGO_UPLOAD_ACCEPT =
+  'image/png,image/jpeg,image/webp,image/svg+xml,image/gif'
+
+function isValidLogoValue(value: string): boolean {
+  if (!value) return true
+  if (value.startsWith('data:image/')) return true
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+const logoSchema = z.string().refine(isValidLogoValue, {
+  message: 'Please upload an image or provide a valid logo URL',
+})
+
 const _systemInfoSchema = z.object({
   theme: z.object({
     frontend: z.enum(['default', 'classic']),
   }),
   SystemName: z.string().min(1),
   ServerAddress: z.string().optional(),
-  Logo: z.string().url().optional().or(z.literal('')),
+  Logo: logoSchema,
   Footer: z.string().optional(),
   About: z.string().optional(),
   HomePageContent: z.string().optional(),
@@ -78,9 +101,99 @@ function normalizeValue(value: unknown): string {
   return typeof value === 'string' ? value : String(value)
 }
 
+function dataUrlByteSize(dataUrl: string) {
+  const base64 = dataUrl.split(',')[1] ?? ''
+  return Math.ceil((base64.length * 3) / 4)
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      result ? resolve(result) : reject(new Error('empty result'))
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('read failed'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('image load failed'))
+    }
+    image.src = url
+  })
+}
+
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality?: number
+): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, quality))
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return readFileAsDataUrl(new File([blob], 'logo', { type: blob.type }))
+}
+
+async function compressLogoFile(file: File): Promise<string> {
+  if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+    return readFileAsDataUrl(file)
+  }
+
+  const image = await loadImageFromFile(file)
+  const sourceWidth = image.naturalWidth || image.width
+  const sourceHeight = image.naturalHeight || image.height
+  if (!sourceWidth || !sourceHeight) {
+    return readFileAsDataUrl(file)
+  }
+
+  const scale = Math.min(
+    1,
+    LOGO_UPLOAD_MAX_DIMENSION / sourceWidth,
+    LOGO_UPLOAD_MAX_DIMENSION / sourceHeight
+  )
+  const targetWidth = Math.max(1, Math.round(sourceWidth * scale))
+  const targetHeight = Math.max(1, Math.round(sourceHeight * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = targetWidth
+  canvas.height = targetHeight
+  const context = canvas.getContext('2d')
+  if (!context) return readFileAsDataUrl(file)
+
+  context.clearRect(0, 0, targetWidth, targetHeight)
+  context.drawImage(image, 0, 0, targetWidth, targetHeight)
+
+  const pngBlob = await canvasToBlob(canvas, 'image/png')
+  if (pngBlob && pngBlob.size <= LOGO_UPLOAD_MAX_SIZE) {
+    return blobToDataUrl(pngBlob)
+  }
+
+  for (const quality of [0.9, 0.8, 0.7, 0.6, 0.5]) {
+    const webpBlob = await canvasToBlob(canvas, 'image/webp', quality)
+    if (webpBlob && webpBlob.size <= LOGO_UPLOAD_MAX_SIZE) {
+      return blobToDataUrl(webpBlob)
+    }
+  }
+
+  return pngBlob ? blobToDataUrl(pngBlob) : readFileAsDataUrl(file)
+}
+
 export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
+  const logoInputRef = useRef<HTMLInputElement | null>(null)
 
   const normalizedDefaults: SystemInfoFormValues = {
     theme: {
@@ -107,7 +220,9 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
       error: () => t('System name is required'),
     }),
     ServerAddress: z.string().optional(),
-    Logo: z.string().url().optional().or(z.literal('')),
+    Logo: z.string().refine(isValidLogoValue, {
+      message: t('Please upload an image or provide a valid logo URL'),
+    }),
     Footer: z.string().optional(),
     About: z.string().optional(),
     HomePageContent: z.string().optional(),
@@ -126,18 +241,84 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
       >,
       defaultValues: normalizedDefaults,
       onSubmit: async (_data, changedFields) => {
-        for (const [key, value] of Object.entries(changedFields)) {
+        // 主题切换会改变后端返回的前端产物，需放到最后处理：先更新其余设置项，
+        // 仅当它们全部成功后才提交主题切换，避免其它设置失败时就切换了主题，
+        // 导致用户停留或刷新到另一套前端不存在的路由而 404。
+        const entries = Object.entries(changedFields)
+        const themeEntry = entries.find(([key]) => key === 'theme.frontend')
+        const otherEntries = entries.filter(([key]) => key !== 'theme.frontend')
+
+        let allSucceeded = true
+        for (const [key, value] of otherEntries) {
           let v = normalizeValue(value)
           if (key === 'ServerAddress') {
             v = v.replace(/\/+$/, '')
           }
-          await updateOption.mutateAsync({
+          const res = await updateOption.mutateAsync({
             key,
             value: v,
           })
+          if (!res.success) {
+            allSucceeded = false
+          }
+        }
+        if (themeEntry && !allSucceeded) {
+          // Theme was not submitted; keep form state consistent with backend.
+          _data.theme.frontend = normalizedDefaults.theme.frontend
+          return
+        }
+        if (themeEntry && allSucceeded) {
+          const res = await updateOption.mutateAsync({
+            key: themeEntry[0],
+            value: normalizeValue(themeEntry[1]),
+          })
+          if (res.success) {
+            // 当前路由在另一套前端中并不存在，主题切换成功后重置到首页以避免 404。
+            // 延时用于让表单脏状态先清除（移除 beforeunload 拦截）并展示成功提示后再刷新；
+            // 使用 replace 让已失效的路由不进入历史，防止返回按钮再次触发 404。
+            setTimeout(() => {
+              window.location.replace('/')
+            }, 600)
+          } else {
+            // Theme update failed; revert to the last saved value.
+            _data.theme.frontend = normalizedDefaults.theme.frontend
+          }
         }
       },
     })
+
+  const handleLogoFile = async (file: File | undefined) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      form.setError('Logo', {
+        type: 'manual',
+        message: t('Please upload an image file'),
+      })
+      return
+    }
+
+    try {
+      const result = await compressLogoFile(file)
+      if (dataUrlByteSize(result) > LOGO_UPLOAD_MAX_SIZE) {
+        form.setError('Logo', {
+          type: 'manual',
+          message: t('Logo image must be 512 KB or smaller'),
+        })
+        return
+      }
+      form.clearErrors('Logo')
+      form.setValue('Logo', result, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      })
+    } catch {
+      form.setError('Logo', {
+        type: 'manual',
+        message: t('Failed to read logo image'),
+      })
+    }
+  }
 
   return (
     <>
@@ -207,7 +388,7 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                   <FormItem>
                     <FormLabel>{t('System Name')}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t('New API')} {...field} />
+                      <Input placeholder={t('Your system name')} {...field} />
                     </FormControl>
                     <FormDescription>
                       {t('The name displayed across the application')}
@@ -241,15 +422,72 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                 name='Logo'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('Logo URL')}</FormLabel>
+                    <FormLabel>{t('Logo image')}</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder={t('https://example.com/logo.png')}
-                        {...field}
-                      />
+                      <div className='flex flex-col gap-3 rounded-lg border p-3'>
+                        <div className='flex items-center gap-3'>
+                          <div className='bg-muted flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border'>
+                            {field.value ? (
+                              <img
+                                src={field.value}
+                                alt={t('Logo preview')}
+                                className='size-full object-contain'
+                              />
+                            ) : (
+                              <ImagePlus className='text-muted-foreground size-5' />
+                            )}
+                          </div>
+                          <div className='flex min-w-0 flex-1 flex-col gap-1'>
+                            <div className='font-medium'>
+                              {field.value
+                                ? t('Logo uploaded')
+                                : t('No logo uploaded')}
+                            </div>
+                            <div className='text-muted-foreground truncate text-sm'>
+                              {field.value ||
+                                t('Upload PNG, JPG, WebP, SVG, or GIF')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className='flex flex-wrap gap-2'>
+                          <Input
+                            ref={logoInputRef}
+                            type='file'
+                            accept={LOGO_UPLOAD_ACCEPT}
+                            className='hidden'
+                            onChange={(event) => {
+                              handleLogoFile(event.target.files?.[0])
+                              event.target.value = ''
+                            }}
+                          />
+                          <Button
+                            type='button'
+                            variant='outline'
+                            onClick={() => logoInputRef.current?.click()}
+                          >
+                            <ImagePlus data-icon='inline-start' />
+                            {t('Upload logo')}
+                          </Button>
+                          {field.value && (
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              onClick={() => {
+                                form.clearErrors('Logo')
+                                field.onChange('')
+                              }}
+                            >
+                              <X data-icon='inline-start' />
+                              {t('Clear logo')}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </FormControl>
                     <FormDescription>
-                      {t('URL to your logo image (optional)')}
+                      {t(
+                        'Upload a logo image to display across the application. The image is saved with this setting after you click Save Changes.'
+                      )}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -313,14 +551,18 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                       <FormLabel>{t('Home Page Content')}</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder={t('Welcome to our New API...')}
-                          rows={6}
+                          placeholder={`{
+  "titleTop": "统一的",
+  "titleBottom": "大模型接口网关",
+  "subtitle": "多模型统一接入，只需将基址替换为："
+}`}
+                          rows={8}
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
                         {t(
-                          'Content displayed on the home page (supports Markdown)'
+                          'Use plain text lines to override the hero title/subtitle, or provide JSON fields such as titleTop, titleBottom, subtitle, serverAddress, endpoints, primaryButtonText, primaryButtonUrl, secondaryButtonText, secondaryButtonUrl, and providersTitle.'
                         )}
                       </FormDescription>
                       <FormMessage />

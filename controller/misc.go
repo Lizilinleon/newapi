@@ -232,11 +232,12 @@ func GetHomePageContent(c *gin.Context) {
 }
 
 func SendEmailVerification(c *gin.Context) {
-	email := c.Query("email")
+	email := strings.ToLower(strings.TrimSpace(c.Query("email")))
+	username := strings.TrimSpace(c.Query("username"))
 	if err := common.Validate.Var(email, "required,email"); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": "invalid email address",
 		})
 		return
 	}
@@ -244,7 +245,7 @@ func SendEmailVerification(c *gin.Context) {
 	if len(parts) != 2 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的邮箱地址",
+			"message": "invalid email address",
 		})
 		return
 	}
@@ -271,26 +272,31 @@ func SendEmailVerification(c *gin.Context) {
 		if containsSpecialSymbols {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "管理员已启用邮箱地址别名限制，您的邮箱地址由于包含特殊符号而被拒绝。",
+				"message": "email aliases are not allowed",
 			})
 			return
 		}
 	}
 
-	if model.IsEmailAlreadyTaken(email) {
+	exist, err := model.CheckUserExistOrDeleted(username, email)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if exist {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "邮箱地址已被占用",
+			"message": "username or email already exists",
 		})
 		return
 	}
 	code := common.GenerateVerificationCode(6)
 	common.RegisterVerificationCodeWithKey(email, code, common.EmailVerificationPurpose)
-	subject := fmt.Sprintf("%s邮箱验证邮件", common.SystemName)
-	content := fmt.Sprintf("<p>您好，你正在进行%s邮箱验证。</p>"+
-		"<p>您的验证码为: <strong>%s</strong></p>"+
-		"<p>验证码 %d 分钟内有效，如果不是本人操作，请忽略。</p>", common.SystemName, code, common.VerificationValidMinutes)
-	err := common.SendEmail(subject, email, content)
+	subject := fmt.Sprintf("%s email verification", common.SystemName)
+	content := fmt.Sprintf("<p>Hello, you are registering for %s.</p>"+
+		"<p>Your verification code is: <strong>%s</strong></p>"+
+		"<p>This code is valid for %d minutes. If you did not request this, please ignore this email.</p>", common.SystemName, code, common.VerificationValidMinutes)
+	err = common.SendEmail(subject, email, content)
 	if err != nil {
 		common.ApiError(c, err)
 		return

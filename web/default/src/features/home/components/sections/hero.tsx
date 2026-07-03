@@ -20,7 +20,7 @@ import { Link } from '@tanstack/react-router'
 import { CherryStudio } from '@lobehub/icons'
 import { ArrowRight, BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useStatus } from '@/hooks/use-status'
+import { getDocsServiceUrl } from '@/lib/docs-url'
 import { Button } from '@/components/ui/button'
 import { HeroTerminalDemo } from '../hero-terminal-demo'
 
@@ -43,11 +43,9 @@ const MoreIcon = () => (
   </svg>
 )
 
-export function Hero(props: HeroProps) {
+export function Hero(_props: HeroProps) {
   const { t } = useTranslation()
-  const { status } = useStatus()
-  const docsUrl =
-    (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
+  const docsUrl = getDocsServiceUrl()
 
   const renderDocsButton = () => {
     const isExternal = docsUrl.startsWith('http')
@@ -137,15 +135,15 @@ export function Hero(props: HeroProps) {
           >
             <Button
               className='group h-11 rounded-lg px-5 text-sm font-medium'
-              render={<Link to='/dashboard' />}
+              render={<Link to='/enterprise' />}
             >
-              {props.isAuthenticated ? t('Go to Dashboard') : t('Enter Console')}
+              {t('Enterprise')}
               <ArrowRight className='ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5' />
             </Button>
             {renderDocsButton()}
           </div>
 
-          {/* Supported Apps (参考图二样式，进行卡片化和信息扩充设计，增加视觉高度) */}
+          {/* Supported Apps (鍙傝€冨浘浜屾牱寮忥紝杩涜鍗＄墖鍖栧拰淇℃伅鎵╁厖璁捐锛屽鍔犺瑙夐珮搴? */}
           <div
             className='landing-animate-fade-up mt-10 w-full max-w-xl opacity-0'
             style={{ animationDelay: '240ms' }}
@@ -156,7 +154,7 @@ export function Hero(props: HeroProps) {
               </span>
               <p className='text-muted-foreground/60 text-xs leading-relaxed'>
                 {t(
-                  'Supports one-click configuration and perfectly adapts to NewAPI multi-protocol configuration.'
+                  'Supports one-click configuration and adapts to multi-protocol API gateway settings.'
                 )}
               </p>
             </div>
@@ -199,7 +197,7 @@ export function Hero(props: HeroProps) {
                 <span>CC Switch</span>
               </a>
 
-              {/* "更多" */}
+              {/* "鏇村" */}
               <div className='group border-border/40 bg-muted/15 text-foreground/55 hover:border-border hover:bg-muted/30 hover:text-foreground flex cursor-default items-center gap-2.5 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'>
                 <MoreIcon />
                 <span>{t('More Apps')}</span>

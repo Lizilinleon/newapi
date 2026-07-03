@@ -291,6 +291,9 @@ export const useModelPricingData = () => {
   const handleGroupClick = (group) => {
     setSelectedGroup(group);
     setFilterGroup(group);
+    if (document.body.classList.contains('classic-pricing-active')) {
+      return;
+    }
     if (group === 'all') {
       showInfo(t('已切换至最优倍率视图，每个模型使用其最低倍率分组'));
     } else {

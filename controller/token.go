@@ -31,15 +31,65 @@ func buildMaskedTokenResponses(tokens []*model.Token) []*model.Token {
 	return maskedTokens
 }
 
+func resolveTokenEnterpriseId(userId int, requestedEnterpriseId int) (int, error) {
+	if requestedEnterpriseId <= 0 {
+		return 0, nil
+	}
+	context, err := model.GetEnterpriseBillingContextForToken(userId, requestedEnterpriseId)
+	if err != nil {
+		return 0, err
+	}
+	if context == nil || context.EnterpriseId != requestedEnterpriseId {
+		return 0, fmt.Errorf("invalid enterprise billing source")
+	}
+	return requestedEnterpriseId, nil
+}
+
+func createTokenForUser(token model.Token, targetUserId int, enterpriseId int) (*model.Token, error) {
+	maxTokens := operation_setting.GetMaxUserTokens()
+	count, err := model.CountUserTokens(targetUserId)
+	if err != nil {
+		return nil, err
+	}
+	if int(count) >= maxTokens {
+		return nil, fmt.Errorf("已达到最大令牌数量限制 (%d)", maxTokens)
+	}
+	key, err := common.GenerateKey()
+	if err != nil {
+		common.SysLog("failed to generate token key: " + err.Error())
+		return nil, err
+	}
+	cleanToken := model.Token{
+		UserId:             targetUserId,
+		Name:               token.Name,
+		Key:                key,
+		CreatedTime:        common.GetTimestamp(),
+		AccessedTime:       common.GetTimestamp(),
+		ExpiredTime:        token.ExpiredTime,
+		RemainQuota:        token.RemainQuota,
+		UnlimitedQuota:     token.UnlimitedQuota,
+		ModelLimitsEnabled: token.ModelLimitsEnabled,
+		ModelLimits:        token.ModelLimits,
+		AllowIps:           token.AllowIps,
+		Group:              token.Group,
+		CrossGroupRetry:    token.CrossGroupRetry,
+		EnterpriseId:       enterpriseId,
+	}
+	if err := cleanToken.Insert(); err != nil {
+		return nil, err
+	}
+	return &cleanToken, nil
+}
+
 func GetAllTokens(c *gin.Context) {
 	userId := c.GetInt("id")
 	pageInfo := common.GetPageQuery(c)
-	tokens, err := model.GetAllUserTokens(userId, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	tokens, err := model.GetPersonalUserTokens(userId, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	total, _ := model.CountUserTokens(userId)
+	total, _ := model.CountPersonalUserTokens(userId)
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(buildMaskedTokenResponses(tokens))
 	common.ApiSuccess(c, pageInfo)
@@ -52,7 +102,7 @@ func SearchTokens(c *gin.Context) {
 
 	pageInfo := common.GetPageQuery(c)
 
-	tokens, total, err := model.SearchUserTokens(userId, keyword, token, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	tokens, total, err := model.SearchPersonalUserTokens(userId, keyword, token, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -201,28 +251,12 @@ func AddToken(c *gin.Context) {
 		})
 		return
 	}
-	key, err := common.GenerateKey()
+	enterpriseId, err := resolveTokenEnterpriseId(c.GetInt("id"), token.EnterpriseId)
 	if err != nil {
-		common.ApiErrorI18n(c, i18n.MsgTokenGenerateFailed)
-		common.SysLog("failed to generate token key: " + err.Error())
+		common.ApiError(c, err)
 		return
 	}
-	cleanToken := model.Token{
-		UserId:             c.GetInt("id"),
-		Name:               token.Name,
-		Key:                key,
-		CreatedTime:        common.GetTimestamp(),
-		AccessedTime:       common.GetTimestamp(),
-		ExpiredTime:        token.ExpiredTime,
-		RemainQuota:        token.RemainQuota,
-		UnlimitedQuota:     token.UnlimitedQuota,
-		ModelLimitsEnabled: token.ModelLimitsEnabled,
-		ModelLimits:        token.ModelLimits,
-		AllowIps:           token.AllowIps,
-		Group:              token.Group,
-		CrossGroupRetry:    token.CrossGroupRetry,
-	}
-	err = cleanToken.Insert()
+	_, err = createTokenForUser(token, c.GetInt("id"), enterpriseId)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -287,6 +321,12 @@ func UpdateToken(c *gin.Context) {
 		}
 	}
 	if statusOnly != "" {
+		if token.Status == common.TokenStatusEnabled && cleanToken.EnterpriseId > 0 {
+			if _, err := resolveTokenEnterpriseId(userId, cleanToken.EnterpriseId); err != nil {
+				common.ApiError(c, fmt.Errorf("enterprise has been dissolved or disabled; this API key cannot be enabled"))
+				return
+			}
+		}
 		cleanToken.Status = token.Status
 	} else {
 		// If you add more fields, please also update token.Update()
@@ -299,6 +339,12 @@ func UpdateToken(c *gin.Context) {
 		cleanToken.AllowIps = token.AllowIps
 		cleanToken.Group = token.Group
 		cleanToken.CrossGroupRetry = token.CrossGroupRetry
+		enterpriseId, err := resolveTokenEnterpriseId(userId, token.EnterpriseId)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		cleanToken.EnterpriseId = enterpriseId
 	}
 	err = cleanToken.Update()
 	if err != nil {

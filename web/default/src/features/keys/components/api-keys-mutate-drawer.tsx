@@ -43,6 +43,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Sheet,
   SheetClose,
@@ -65,6 +66,7 @@ import {
   sideDrawerSwitchItemClassName,
 } from '@/components/drawer-layout'
 import { MultiSelect } from '@/components/multi-select'
+import { getEnterpriseSummary } from '@/features/enterprise/api'
 import { createApiKey, updateApiKey, getApiKey } from '../api'
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import {
@@ -74,7 +76,7 @@ import {
   transformFormDataToPayload,
   transformApiKeyToFormDefaults,
 } from '../lib'
-import { type ApiKey } from '../types'
+import { type ApiKey, type ApiKeyFormData, type ApiResponse } from '../types'
 import {
   ApiKeyGroupCombobox,
   type ApiKeyGroupOption,
@@ -85,12 +87,18 @@ type ApiKeyMutateDrawerProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentRow?: ApiKey
+  initialEnterpriseId?: number
+  lockEnterpriseId?: boolean
+  createApiKeyFn?: (data: ApiKeyFormData) => Promise<ApiResponse<ApiKey>>
 }
 
 export function ApiKeysMutateDrawer({
   open,
   onOpenChange,
   currentRow,
+  initialEnterpriseId = 0,
+  lockEnterpriseId = false,
+  createApiKeyFn = createApiKey,
 }: ApiKeyMutateDrawerProps) {
   const { t } = useTranslation()
   const isUpdate = !!currentRow
@@ -104,17 +112,31 @@ export function ApiKeysMutateDrawer({
   const { data: modelsData } = useQuery({
     queryKey: ['user-models'],
     queryFn: getUserModels,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    enabled: open,
+    staleTime: 0,
   })
 
   // Fetch groups
   const { data: groupsData } = useQuery({
     queryKey: ['user-groups'],
     queryFn: getUserGroups,
-    staleTime: 5 * 60 * 1000,
+    enabled: open,
+    staleTime: 0,
+  })
+
+  const { data: enterpriseData } = useQuery({
+    queryKey: ['enterprise', 'summary'],
+    queryFn: getEnterpriseSummary,
+    enabled: open,
+    staleTime: 60 * 1000,
   })
 
   const models = modelsData?.data || []
+  const enterpriseSummary = enterpriseData?.data
+  const memberEnterpriseId =
+    enterpriseSummary?.mode === 'member'
+      ? (enterpriseSummary.enterprise?.id ?? 0)
+      : 0
   const groupsRaw = groupsData?.data || {}
   const groups: ApiKeyGroupOption[] = Object.entries(groupsRaw).map(
     ([key, info]) => ({
@@ -141,11 +163,20 @@ export function ApiKeysMutateDrawer({
         }
       })
     } else if (open && !isUpdate) {
-      form.reset(
-        getApiKeyFormDefaultValues(defaultUseAutoGroup && backendHasAuto)
-      )
+      form.reset({
+        ...getApiKeyFormDefaultValues(defaultUseAutoGroup && backendHasAuto),
+        enterprise_id: initialEnterpriseId,
+      })
     }
-  }, [open, isUpdate, currentRow, form, defaultUseAutoGroup, backendHasAuto])
+  }, [
+    open,
+    isUpdate,
+    currentRow,
+    form,
+    defaultUseAutoGroup,
+    backendHasAuto,
+    initialEnterpriseId,
+  ])
 
   // Correct group after groups load: if the form value is not in available groups, fall back
   useEffect(() => {
@@ -162,6 +193,19 @@ export function ApiKeysMutateDrawer({
       }
     }
   }, [groups, form])
+
+  useEffect(() => {
+    if (!open) return
+    if (!enterpriseData?.data) return
+    const currentEnterpriseId = form.getValues('enterprise_id') || 0
+    if (
+      !lockEnterpriseId &&
+      currentEnterpriseId > 0 &&
+      currentEnterpriseId !== memberEnterpriseId
+    ) {
+      form.setValue('enterprise_id', 0)
+    }
+  }, [open, enterpriseData?.data, memberEnterpriseId, form, lockEnterpriseId])
 
   const onSubmit = async (data: ApiKeyFormValues) => {
     setIsSubmitting(true)
@@ -186,7 +230,7 @@ export function ApiKeysMutateDrawer({
         let successCount = 0
 
         for (let i = 0; i < count; i++) {
-          const result = await createApiKey({
+          const result = await createApiKeyFn({
             ...basePayload,
             name:
               i === 0 && data.name
@@ -245,6 +289,7 @@ export function ApiKeysMutateDrawer({
     : t('Enter quota in {{currency}}', { currency: currencyLabel })
   const selectedGroup = form.watch('group')
   const unlimitedQuota = form.watch('unlimited_quota')
+  const selectedEnterpriseId = form.watch('enterprise_id') || 0
 
   return (
     <Sheet
@@ -313,6 +358,71 @@ export function ApiKeysMutateDrawer({
                   </FormItem>
                 )}
               />
+
+              {(memberEnterpriseId > 0 || lockEnterpriseId) && (
+                <FormField
+                  control={form.control}
+                  name='enterprise_id'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Billing source')}</FormLabel>
+                      {lockEnterpriseId ? (
+                        <div className='border-input bg-muted/20 rounded-lg border p-3 text-sm font-medium'>
+                          {t('Company billing')}
+                        </div>
+                      ) : (
+                        <FormControl>
+                          <RadioGroup
+                            value={String(field.value || 0)}
+                            onValueChange={(value) =>
+                              field.onChange(Number(value) || 0)
+                            }
+                            className='grid gap-2 sm:grid-cols-2'
+                          >
+                            <label className='border-input hover:bg-muted/40 has-[[data-checked]]:border-primary flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors'>
+                              <RadioGroupItem value='0' className='mt-0.5' />
+                              <span className='flex flex-col gap-1'>
+                                <span className='text-sm font-medium'>
+                                  {t('Personal account billing')}
+                                </span>
+                                <span className='text-muted-foreground text-xs'>
+                                  {t('Usage is charged to your own balance.')}
+                                </span>
+                              </span>
+                            </label>
+                            <label className='border-input hover:bg-muted/40 has-[[data-checked]]:border-primary flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors'>
+                              <RadioGroupItem
+                                value={String(memberEnterpriseId)}
+                                className='mt-0.5'
+                              />
+                              <span className='flex flex-col gap-1'>
+                                <span className='text-sm font-medium'>
+                                  {t('Company billing')}
+                                </span>
+                                <span className='text-muted-foreground text-xs'>
+                                  {t(
+                                    'Usage is charged to your organization allocation.'
+                                  )}
+                                </span>
+                              </span>
+                            </label>
+                          </RadioGroup>
+                        </FormControl>
+                      )}
+                      <FormDescription>
+                        {selectedEnterpriseId > 0
+                          ? t(
+                              'This API key will consume your enterprise member balance.'
+                            )
+                          : t(
+                              'This API key will consume your personal balance.'
+                            )}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {selectedGroup === 'auto' && (
                 <FormField

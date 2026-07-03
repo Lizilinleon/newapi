@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useCallback, useMemo } from 'react'
-import { getRouteApi, useNavigate } from '@tanstack/react-router'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useSidebarConfig } from '@/hooks/use-sidebar-config'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -36,7 +36,6 @@ import {
   type UsageLogsSectionId,
 } from './section-registry'
 
-const route = getRouteApi('/_authenticated/usage-logs/$section')
 const TASK_LOG_SECTIONS = ['drawing', 'task'] as const
 
 const SECTION_META: Record<UsageLogsSectionId, { titleKey: string }> = {
@@ -51,10 +50,19 @@ const SECTION_META: Record<UsageLogsSectionId, { titleKey: string }> = {
   },
 }
 
-function UsageLogsContent() {
+interface UsageLogsContentProps {
+  mode: 'personal' | 'admin'
+}
+
+function UsageLogsContent({ mode }: UsageLogsContentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const params = route.useParams()
+  const params = useParams({ strict: false }) as { section?: string }
+  const isAdminView = mode === 'admin'
+  const basePath = isAdminView ? '/admin-logs' : '/usage-logs'
+  const routePath = isAdminView
+    ? '/admin-logs/$section'
+    : '/usage-logs/$section'
   const activeCategory: UsageLogsSectionId =
     params.section && isUsageLogsSectionId(params.section)
       ? params.section
@@ -73,11 +81,11 @@ function UsageLogsContent() {
         title: 'Task Logs',
         items: TASK_LOG_SECTIONS.map((section) => ({
           title: SECTION_META[section].titleKey,
-          url: `/usage-logs/${section}`,
+          url: `${basePath}/${section}`,
         })),
       },
     ],
-    []
+    [basePath]
   )
   const filteredTabGroups = useSidebarConfig(tabNavGroups)
   const visibleSections = useMemo(
@@ -96,26 +104,27 @@ function UsageLogsContent() {
   const handleSectionChange = useCallback(
     (section: string) => {
       void navigate({
-        to: '/usage-logs/$section',
+        to: routePath,
         params: { section: section as UsageLogsSectionId },
-      })
+      } as never)
     },
-    [navigate]
+    [navigate, routePath]
   )
 
   const pageMeta =
     activeCategory === 'common' ? SECTION_META.common : SECTION_META.task
+  const pageTitleKey = isAdminView ? 'Admin Logs' : pageMeta.titleKey
   const showTaskSwitcher =
     activeCategory !== 'common' && visibleSections.length > 1
 
   return (
     <>
-      <SectionPageLayout>
+      <SectionPageLayout fixedContent>
         <SectionPageLayout.Title>
-          {t(pageMeta.titleKey)}
+          {t(pageTitleKey)}
         </SectionPageLayout.Title>
         <SectionPageLayout.Content>
-          <div className='space-y-4'>
+          <div className='flex h-full min-h-0 flex-col gap-4'>
             {showTaskSwitcher && (
               <Tabs value={activeCategory} onValueChange={handleSectionChange}>
                 <TabsList className='max-w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto'>
@@ -127,7 +136,12 @@ function UsageLogsContent() {
                 </TabsList>
               </Tabs>
             )}
-            <UsageLogsTable logCategory={activeCategory} />
+            <div className='min-h-0 flex-1'>
+              <UsageLogsTable
+                logCategory={activeCategory}
+                isAdminView={isAdminView}
+              />
+            </div>
           </div>
         </SectionPageLayout.Content>
       </SectionPageLayout>
@@ -159,10 +173,14 @@ function UsageLogsContent() {
   )
 }
 
-export function UsageLogs() {
+interface UsageLogsProps {
+  mode?: 'personal' | 'admin'
+}
+
+export function UsageLogs({ mode = 'personal' }: UsageLogsProps) {
   return (
     <UsageLogsProvider>
-      <UsageLogsContent />
+      <UsageLogsContent mode={mode} />
     </UsageLogsProvider>
   )
 }

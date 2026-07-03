@@ -14,6 +14,7 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/service/authz"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/types"
 
@@ -92,6 +93,37 @@ func authHelper(c *gin.Context, minRole int) {
 			return
 		}
 	}
+	if !useAccessToken && model.DB != nil {
+		sessionUserId, ok := id.(int)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgAuthUserIdFormatError),
+			})
+			c.Abort()
+			return
+		}
+		userCache, err := model.GetUserCache(sessionUserId)
+		if err != nil {
+			common.SysLog(fmt.Sprintf("authHelper GetUserCache error for user %d: %v", sessionUserId, err))
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgDatabaseError),
+			})
+			c.Abort()
+			return
+		}
+		if cachedStatus, ok := status.(int); !ok || cachedStatus != userCache.Status {
+			status = userCache.Status
+			session.Set("status", userCache.Status)
+			if userCache.Status == common.UserStatusDisabled {
+				session.Clear()
+			}
+			if err := session.Save(); err != nil {
+				common.SysLog(fmt.Sprintf("failed to refresh session status for user %d: %v", sessionUserId, err))
+			}
+		}
+	}
 	// get header New-Api-User
 	apiUserIdStr := c.Request.Header.Get("New-Api-User")
 	var apiUserId int
@@ -159,7 +191,17 @@ func authHelper(c *gin.Context, minRole int) {
 	c.Set("user_group", session.Get("group"))
 	c.Set("use_access_token", useAccessToken)
 
+	// 管理/root 写操作审计兜底：内聚在鉴权链路里，保证任何经过 AdminAuth/RootAuth
+	// 的写接口都会自动留痕（无需在路由上单独挂审计中间件，避免漏挂）。
+	// handler 内手动埋点者会设置 ContextKeyAuditLogged，finishAdminAudit 据此跳过。
+	var auditWriter *auditResponseWriter
+	if minRole >= common.RoleAdminUser {
+		auditWriter = beginAdminAudit(c)
+	}
+
 	c.Next()
+
+	finishAdminAudit(c, auditWriter)
 }
 
 func TryUserAuth() func(c *gin.Context) {
@@ -188,6 +230,22 @@ func AdminAuth() func(c *gin.Context) {
 func RootAuth() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		authHelper(c, common.RoleRootUser)
+	}
+}
+
+func RequirePermission(permission authz.Permission) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		role := c.GetInt("role")
+		userID := c.GetInt("id")
+		if authz.Can(userID, role, permission) {
+			c.Next()
+			return
+		}
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": common.TranslateMessage(c, i18n.MsgAuthInsufficientPrivilege),
+		})
+		c.Abort()
 	}
 }
 
@@ -389,7 +447,7 @@ func TokenAuth() func(c *gin.Context) {
 		common.SetContextKey(c, constant.ContextKeyBillingUserName, userCache.Username)
 		common.SetContextKey(c, constant.ContextKeyBillingUserQuota, userCache.Quota)
 
-		enterpriseBilling, err := model.GetEnterpriseBillingContext(token.UserId)
+		enterpriseBilling, err := model.GetEnterpriseBillingContextForToken(token.UserId, token.EnterpriseId)
 		if err != nil {
 			if errors.Is(err, model.ErrEnterpriseMemberDisabled) || errors.Is(err, model.ErrEnterpriseDisabled) {
 				abortWithOpenAiMessage(c, http.StatusForbidden, err.Error(), types.ErrorCodeAccessDenied)
@@ -400,14 +458,14 @@ func TokenAuth() func(c *gin.Context) {
 				common.TranslateMessage(c, i18n.MsgDatabaseError))
 			return
 		}
+		if token.EnterpriseId > 0 && enterpriseBilling == nil {
+			abortWithOpenAiMessage(c, http.StatusForbidden, "enterprise billing source is no longer available", types.ErrorCodeAccessDenied)
+			return
+		}
 		if enterpriseBilling != nil {
 			common.SetContextKey(c, constant.ContextKeyEnterpriseId, enterpriseBilling.EnterpriseId)
 			common.SetContextKey(c, constant.ContextKeyEnterpriseRole, model.EnterpriseRoleMember)
 			common.SetContextKey(c, constant.ContextKeyEnterpriseStatus, model.EnterpriseMemberStatusActive)
-			common.SetContextKey(c, constant.ContextKeyBillingUserId, enterpriseBilling.OwnerUserId)
-			common.SetContextKey(c, constant.ContextKeyBillingUserEmail, enterpriseBilling.OwnerEmail)
-			common.SetContextKey(c, constant.ContextKeyBillingUserName, enterpriseBilling.OwnerName)
-			common.SetContextKey(c, constant.ContextKeyBillingUserQuota, enterpriseBilling.OwnerQuota)
 		}
 
 		userGroup := userCache.Group

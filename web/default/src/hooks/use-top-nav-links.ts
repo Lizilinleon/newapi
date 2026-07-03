@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 
 export type TopNavLink = {
   title: string
@@ -28,9 +27,5 @@ export type TopNavLink = {
 }
 
 export function useTopNavLinks(): TopNavLink[] {
-  const { t } = useTranslation()
-  return useMemo(
-    () => [{ title: t('Console'), href: '/dashboard' }],
-    [t]
-  )
+  return useMemo(() => [], [])
 }

@@ -21,7 +21,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 export const Route = createFileRoute('/setup/')({
   beforeLoad: ({ location }) => {
     throw redirect({
-      to: '/dashboard',
+      to: '/enterprise',
       search: location.search,
       replace: true,
     })

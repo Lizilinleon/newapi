@@ -290,7 +290,7 @@ export function UserAuthForm({
             variant='outline'
             disabled={passkeyButtonDisabled}
             onClick={handlePasskeyLogin}
-            className='h-11 w-full justify-center gap-2 rounded-lg'
+            className='h-11 w-full justify-center gap-2 rounded-xl border-cyan-200/80 bg-white/55 text-cyan-800 shadow-sm transition hover:bg-cyan-50/80 dark:border-cyan-300/20 dark:bg-white/5 dark:text-cyan-100 dark:hover:bg-cyan-300/10'
           >
             {isPasskeyLoading ? (
               <Loader2 className='h-4 w-4 animate-spin' />
@@ -321,7 +321,7 @@ export function UserAuthForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-4', className)}
+        className={cn('grid gap-5 text-base', className)}
         {...props}
       >
         {hasAlternativeLogin && alternativeLoginMethods}
@@ -367,7 +367,7 @@ export function UserAuthForm({
             {/* Submit Button */}
             <Button
               type='submit'
-              className='mt-2 w-full justify-center gap-2'
+              className='mt-3 h-12 w-full justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-rose-500 text-base font-bold text-white shadow-[0_16px_36px_-18px_rgba(37,99,235,0.9)] transition hover:opacity-95'
               disabled={isLoading || (requiresLegalConsent && !agreedToLegal)}
             >
               {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}

@@ -115,8 +115,13 @@ export function SidebarModulesCard() {
         },
         {
           key: 'personal',
-          title: t('Personal Settings'),
+          title: t('Profile'),
           description: t('Personal info settings'),
+        },
+        {
+          key: 'settings',
+          title: t('Settings'),
+          description: t('Account and sidebar preferences'),
         },
       ],
     },
@@ -200,7 +205,7 @@ export function SidebarModulesCard() {
   }
 
   return (
-    <Card className='gap-0 overflow-hidden py-0'>
+    <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
       <CardHeader className='border-b p-3 !pb-3 sm:p-5 sm:!pb-5'>
         <div className='flex items-center gap-3'>
           <div className='bg-muted flex h-8 w-8 shrink-0 items-center justify-center rounded-lg sm:h-9 sm:w-9'>
@@ -240,7 +245,7 @@ export function SidebarModulesCard() {
                 {section.modules.map((mod) => (
                   <div
                     key={mod.key}
-                    className={`flex min-h-16 items-center justify-between rounded-lg border p-3 transition-opacity ${
+                    className={`flex min-h-16 items-center justify-between rounded-lg border p-3 ${
                       sectionEnabled ? '' : 'opacity-50'
                     }`}
                   >

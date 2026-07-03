@@ -131,7 +131,7 @@ func GetLogsSelfStat(c *gin.Context) {
 	modelName := c.Query("model_name")
 	channel, _ := strconv.Atoi(c.Query("channel"))
 	group := c.Query("group")
-	quotaNum, err := model.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
+	quotaNum, err := model.SumPersonalUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -150,6 +150,10 @@ func GetLogsSelfStat(c *gin.Context) {
 	return
 }
 
+// DeleteHistoryLogs is the legacy synchronous log cleanup endpoint (DELETE /api/log/).
+// It deletes directly instead of going through the async system task. It is kept only
+// for the classic frontend; the default frontend uses POST /api/system-task/log-cleanup.
+// TODO: remove this handler (and its route) once the classic frontend is removed.
 func DeleteHistoryLogs(c *gin.Context) {
 	targetTimestamp, _ := strconv.ParseInt(c.Query("target_timestamp"), 10, 64)
 	if targetTimestamp == 0 {

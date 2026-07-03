@@ -16,18 +16,17 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useQuery } from '@tanstack/react-query'
 import {
-  Activity,
   Box,
   Building2,
   CreditCard,
   FileText,
   FlaskConical,
   Key,
-  LayoutDashboard,
   ListTodo,
-  MessageSquare,
   Radio,
+  ServerCog,
   Settings,
   Ticket,
   User,
@@ -35,7 +34,10 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useAuthStore } from '@/stores/auth-store'
 import { type SidebarData } from '@/components/layout/types'
+import { getEnterpriseSummary } from '@/features/enterprise/api'
+import { ROLE } from '@/lib/roles'
 
 /**
  * Root navigation groups for the application sidebar.
@@ -45,66 +47,101 @@ import { type SidebarData } from '@/components/layout/types'
  */
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
+  const userRole = useAuthStore((state) => state.auth.user?.role ?? 0)
+  const enterpriseSummaryQuery = useQuery({
+    queryKey: ['enterprise', 'summary'],
+    queryFn: getEnterpriseSummary,
+    staleTime: 30_000,
+  })
+  const isSuperAdmin = userRole === ROLE.SUPER_ADMIN
+  const isEnterpriseMember =
+    enterpriseSummaryQuery.data?.success &&
+    enterpriseSummaryQuery.data.data?.mode === 'member'
+  const enterpriseItems = [
+    {
+      title: t('Overview'),
+      url: '/enterprise/overview',
+      activeUrls: ['/enterprise', '/enterprise/'],
+      icon: Building2,
+    },
+    ...(!isEnterpriseMember
+      ? [
+          {
+            title: t('Member management'),
+            url: '/enterprise/members',
+            icon: Users,
+          },
+        ]
+      : []),
+    {
+      title: t('API Keys'),
+      url: '/enterprise/member-api',
+      icon: Key,
+    },
+    {
+      title: t('Usage logs'),
+      url: '/enterprise/usage-logs',
+      icon: FileText,
+    },
+  ]
+  const personalServiceItems = [
+    {
+      title: t('API Keys'),
+      url: '/keys',
+      icon: Key,
+    },
+    {
+      title: t('Usage Logs'),
+      url: '/usage-logs/common',
+      icon: FileText,
+    },
+    {
+      title: t('Task Logs'),
+      url: '/usage-logs/task',
+      activeUrls: ['/usage-logs/drawing'],
+      configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
+      icon: ListTodo,
+    },
+  ]
 
   return {
     navGroups: [
       {
         id: 'chat',
-        title: t('Chat'),
+        title: '测试',
         items: [
           {
             title: t('Playground'),
             url: '/playground',
             icon: FlaskConical,
           },
-          {
-            title: t('Chat'),
-            icon: MessageSquare,
-            type: 'chat-presets',
-          },
         ],
       },
+      ...(!isSuperAdmin
+        ? [
+            {
+              id: 'service',
+              title: t('Service'),
+              items: [
+                {
+                  title: t('Enterprise'),
+                  icon: Building2,
+                  defaultOpen: true,
+                  items: enterpriseItems,
+                },
+                {
+                  title: t('Personal'),
+                  icon: User,
+                  defaultOpen: true,
+                  items: personalServiceItems,
+                },
+              ],
+            },
+          ]
+        : []),
       {
-        id: 'general',
-        title: t('General'),
-        items: [
-          {
-            title: t('Overview'),
-            url: '/dashboard/overview',
-            icon: Activity,
-          },
-          {
-            title: t('Dashboard'),
-            url: '/dashboard/models',
-            icon: LayoutDashboard,
-          },
-          {
-            title: t('API Keys'),
-            url: '/keys',
-            icon: Key,
-          },
-          {
-            title: t('Enterprise'),
-            url: '/enterprise',
-            icon: Building2,
-          },
-          {
-            title: t('Usage Logs'),
-            url: '/usage-logs/common',
-            icon: FileText,
-          },
-          {
-            title: t('Task Logs'),
-            url: '/usage-logs/task',
-            activeUrls: ['/usage-logs/drawing'],
-            configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
-            icon: ListTodo,
-          },
-        ],
-      },
-      {
-        id: 'personal',
-        title: t('Personal'),
+        id: 'settings',
+        title: t('Settings'),
         items: [
           {
             title: t('Wallet'),
@@ -115,6 +152,13 @@ export function useSidebarData(): SidebarData {
             title: t('Profile'),
             url: '/profile',
             icon: User,
+          },
+          {
+            title: t('More Settings'),
+            url: '/settings/account-bindings',
+            activeUrls: ['/settings'],
+            configUrls: ['/settings'],
+            icon: Settings,
           },
         ],
       },
@@ -138,14 +182,36 @@ export function useSidebarData(): SidebarData {
             icon: Users,
           },
           {
+            title: t('Enterprise List'),
+            url: '/enterprises',
+            icon: Building2,
+          },
+          {
             title: t('Redemption Codes'),
             url: '/redemption-codes',
             icon: Ticket,
           },
           {
-            title: t('Subscription Management'),
+            title: t('Subscriptions'),
             url: '/subscriptions',
             icon: CreditCard,
+          },
+          {
+            title: t('Admin Logs'),
+            url: '/admin-logs/common',
+            activeUrls: ['/admin-logs'],
+            configUrls: [
+              '/admin-logs/common',
+              '/admin-logs/drawing',
+              '/admin-logs/task',
+            ],
+            icon: FileText,
+          },
+          {
+            title: t('System Info'),
+            url: '/system-info',
+            icon: ServerCog,
+            requiredRole: ROLE.SUPER_ADMIN,
           },
           {
             title: t('System Settings'),

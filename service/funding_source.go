@@ -64,6 +64,46 @@ func (w *WalletFunding) Refund() error {
 }
 
 // ---------------------------------------------------------------------------
+// EnterpriseMemberFunding - enterprise member allocation funding source.
+// ---------------------------------------------------------------------------
+
+type EnterpriseMemberFunding struct {
+	memberUserId int
+	enterpriseId int
+	consumed     int
+}
+
+func (e *EnterpriseMemberFunding) Source() string { return BillingSourceEnterprise }
+
+func (e *EnterpriseMemberFunding) PreConsume(amount int) error {
+	if amount <= 0 {
+		return nil
+	}
+	if err := model.DecreaseEnterpriseMemberRemainQuota(e.memberUserId, e.enterpriseId, amount); err != nil {
+		return err
+	}
+	e.consumed = amount
+	return nil
+}
+
+func (e *EnterpriseMemberFunding) Settle(delta int) error {
+	if delta == 0 {
+		return nil
+	}
+	if delta > 0 {
+		return model.DecreaseEnterpriseMemberRemainQuota(e.memberUserId, e.enterpriseId, delta)
+	}
+	return model.IncreaseEnterpriseMemberRemainQuota(e.memberUserId, e.enterpriseId, -delta)
+}
+
+func (e *EnterpriseMemberFunding) Refund() error {
+	if e.consumed <= 0 {
+		return nil
+	}
+	return model.IncreaseEnterpriseMemberRemainQuota(e.memberUserId, e.enterpriseId, e.consumed)
+}
+
+// ---------------------------------------------------------------------------
 // SubscriptionFunding — 订阅资金来源实现
 // ---------------------------------------------------------------------------
 

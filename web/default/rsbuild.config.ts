@@ -1,10 +1,16 @@
-import path from 'path'
-import { fileURLToPath } from 'url'
+import path from 'node:path'
+import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
 import { defineConfig, loadEnv } from '@rsbuild/core'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { tanstackRouter } from '@tanstack/router-plugin/rspack'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const require = createRequire(import.meta.url)
+const semiUiDir = path.resolve(
+  path.dirname(require.resolve('@douyinfe/semi-ui')),
+  '../..'
+)
 
 export default defineConfig(({ envMode }) => {
   const env = loadEnv({ mode: envMode, prefixes: ['VITE_'] })
@@ -15,10 +21,10 @@ export default defineConfig(({ envMode }) => {
 
   const isProd = envMode === 'production'
   const devProxy = Object.fromEntries(
-    (['/api', '/mj', '/pg'] as const).map((key) => [
+    (['/api', '/mj', '/pg', '/v1'] as const).map((key) => [
       key,
       { target: serverUrl, changeOrigin: true },
-    ]),
+    ])
   ) as Record<string, { target: string; changeOrigin: boolean }>
 
   return {
@@ -58,6 +64,10 @@ export default defineConfig(({ envMode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        '@douyinfe/semi-ui/dist/css/semi.css': path.resolve(
+          semiUiDir,
+          'dist/css/semi.css'
+        ),
       },
     },
     html: {
@@ -65,7 +75,7 @@ export default defineConfig(({ envMode }) => {
     },
     server: {
       host: '0.0.0.0',
-      strictPort: true,
+      strictPort: false,
       proxy: devProxy,
     },
     output: {

@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as z from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -33,6 +33,14 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -56,6 +64,7 @@ const monitoringSchema = z
   .object({
     ChannelDisableThreshold: numericString,
     QuotaRemindThreshold: numericString,
+    UserQuotaNotifyEnabled: z.boolean(),
     AutomaticDisableChannelEnabled: z.boolean(),
     AutomaticEnableChannelEnabled: z.boolean(),
     AutomaticDisableKeywords: z.string(),
@@ -67,6 +76,16 @@ const monitoringSchema = z
         .number()
         .int()
         .min(1, 'Interval must be at least 1 minute'),
+    }),
+    perf_metrics_setting: z.object({
+      enabled: z.boolean(),
+      flush_interval: z.coerce.number().min(1),
+      bucket_time: z.enum(['minute', '5min', 'hour']),
+      retention_days: z.coerce.number().min(0),
+    }),
+    enterprise_setting: z.object({
+      balance_email_notify_enabled: z.boolean(),
+      balance_warning_percent: z.coerce.number().int().min(1).max(100),
     }),
   })
   .superRefine((values, ctx) => {
@@ -104,6 +123,7 @@ type MonitoringSettingsSectionProps = {
   defaultValues: {
     ChannelDisableThreshold: string
     QuotaRemindThreshold: string
+    UserQuotaNotifyEnabled: boolean
     AutomaticDisableChannelEnabled: boolean
     AutomaticEnableChannelEnabled: boolean
     AutomaticDisableKeywords: string
@@ -111,6 +131,12 @@ type MonitoringSettingsSectionProps = {
     AutomaticRetryStatusCodes: string
     'monitor_setting.auto_test_channel_enabled': boolean
     'monitor_setting.auto_test_channel_minutes': number
+    'perf_metrics_setting.enabled': boolean
+    'perf_metrics_setting.flush_interval': number
+    'perf_metrics_setting.bucket_time': 'minute' | '5min' | 'hour'
+    'perf_metrics_setting.retention_days': number
+    'enterprise_setting.balance_email_notify_enabled': boolean
+    'enterprise_setting.balance_warning_percent': number
   }
 }
 
@@ -121,6 +147,7 @@ function normalizeLineEndings(value: string) {
 type NormalizedMonitoringValues = {
   ChannelDisableThreshold: string
   QuotaRemindThreshold: string
+  UserQuotaNotifyEnabled: boolean
   AutomaticDisableChannelEnabled: boolean
   AutomaticEnableChannelEnabled: boolean
   AutomaticDisableKeywords: string
@@ -128,6 +155,8 @@ type NormalizedMonitoringValues = {
   AutomaticRetryStatusCodes: string
   'monitor_setting.auto_test_channel_enabled': boolean
   'monitor_setting.auto_test_channel_minutes': number
+  'enterprise_setting.balance_email_notify_enabled': boolean
+  'enterprise_setting.balance_warning_percent': number
 }
 
 const buildFormDefaults = (
@@ -135,6 +164,7 @@ const buildFormDefaults = (
 ): MonitoringFormInput => ({
   ChannelDisableThreshold: defaults.ChannelDisableThreshold ?? '',
   QuotaRemindThreshold: defaults.QuotaRemindThreshold ?? '',
+  UserQuotaNotifyEnabled: defaults.UserQuotaNotifyEnabled,
   AutomaticDisableChannelEnabled: defaults.AutomaticDisableChannelEnabled,
   AutomaticEnableChannelEnabled: defaults.AutomaticEnableChannelEnabled,
   AutomaticDisableKeywords: normalizeLineEndings(
@@ -148,6 +178,18 @@ const buildFormDefaults = (
     auto_test_channel_minutes:
       defaults['monitor_setting.auto_test_channel_minutes'],
   },
+  perf_metrics_setting: {
+    enabled: defaults['perf_metrics_setting.enabled'],
+    flush_interval: defaults['perf_metrics_setting.flush_interval'],
+    bucket_time: defaults['perf_metrics_setting.bucket_time'],
+    retention_days: defaults['perf_metrics_setting.retention_days'],
+  },
+  enterprise_setting: {
+    balance_email_notify_enabled:
+      defaults['enterprise_setting.balance_email_notify_enabled'],
+    balance_warning_percent:
+      defaults['enterprise_setting.balance_warning_percent'],
+  },
 })
 
 const normalizeDefaults = (
@@ -155,6 +197,7 @@ const normalizeDefaults = (
 ): NormalizedMonitoringValues => ({
   ChannelDisableThreshold: (defaults.ChannelDisableThreshold ?? '').trim(),
   QuotaRemindThreshold: (defaults.QuotaRemindThreshold ?? '').trim(),
+  UserQuotaNotifyEnabled: defaults.UserQuotaNotifyEnabled,
   AutomaticDisableChannelEnabled: defaults.AutomaticDisableChannelEnabled,
   AutomaticEnableChannelEnabled: defaults.AutomaticEnableChannelEnabled,
   AutomaticDisableKeywords: normalizeLineEndings(
@@ -170,6 +213,16 @@ const normalizeDefaults = (
     defaults['monitor_setting.auto_test_channel_enabled'],
   'monitor_setting.auto_test_channel_minutes':
     defaults['monitor_setting.auto_test_channel_minutes'],
+  'perf_metrics_setting.enabled': defaults['perf_metrics_setting.enabled'],
+  'perf_metrics_setting.flush_interval':
+    defaults['perf_metrics_setting.flush_interval'],
+  'perf_metrics_setting.bucket_time': defaults['perf_metrics_setting.bucket_time'],
+  'perf_metrics_setting.retention_days':
+    defaults['perf_metrics_setting.retention_days'],
+  'enterprise_setting.balance_email_notify_enabled':
+    defaults['enterprise_setting.balance_email_notify_enabled'],
+  'enterprise_setting.balance_warning_percent':
+    defaults['enterprise_setting.balance_warning_percent'],
 })
 
 const normalizeFormValues = (
@@ -177,6 +230,7 @@ const normalizeFormValues = (
 ): NormalizedMonitoringValues => ({
   ChannelDisableThreshold: values.ChannelDisableThreshold.trim(),
   QuotaRemindThreshold: values.QuotaRemindThreshold.trim(),
+  UserQuotaNotifyEnabled: values.UserQuotaNotifyEnabled,
   AutomaticDisableChannelEnabled: values.AutomaticDisableChannelEnabled,
   AutomaticEnableChannelEnabled: values.AutomaticEnableChannelEnabled,
   AutomaticDisableKeywords: normalizeLineEndings(
@@ -192,6 +246,16 @@ const normalizeFormValues = (
     values.monitor_setting.auto_test_channel_enabled,
   'monitor_setting.auto_test_channel_minutes':
     values.monitor_setting.auto_test_channel_minutes,
+  'perf_metrics_setting.enabled': values.perf_metrics_setting.enabled,
+  'perf_metrics_setting.flush_interval':
+    values.perf_metrics_setting.flush_interval,
+  'perf_metrics_setting.bucket_time': values.perf_metrics_setting.bucket_time,
+  'perf_metrics_setting.retention_days':
+    values.perf_metrics_setting.retention_days,
+  'enterprise_setting.balance_email_notify_enabled':
+    values.enterprise_setting.balance_email_notify_enabled,
+  'enterprise_setting.balance_warning_percent':
+    values.enterprise_setting.balance_warning_percent,
 })
 
 export function MonitoringSettingsSection({
@@ -201,6 +265,9 @@ export function MonitoringSettingsSection({
   const updateOption = useUpdateOption()
   const baselineRef = useRef<NormalizedMonitoringValues>(
     normalizeDefaults(defaultValues)
+  )
+  const baselineSerializedRef = useRef<string>(
+    JSON.stringify(normalizeDefaults(defaultValues))
   )
 
   const formDefaults = useMemo(
@@ -215,6 +282,15 @@ export function MonitoringSettingsSection({
 
   useResetForm(form, formDefaults)
 
+  useEffect(() => {
+    const normalized = normalizeDefaults(defaultValues)
+    const serialized = JSON.stringify(normalized)
+    if (serialized === baselineSerializedRef.current) return
+    baselineRef.current = normalized
+    baselineSerializedRef.current = serialized
+  }, [defaultValues])
+
+  const perfMetricsEnabled = form.watch('perf_metrics_setting.enabled')
   const autoDisableStatusCodes = form.watch('AutomaticDisableStatusCodes')
   const autoRetryStatusCodes = form.watch('AutomaticRetryStatusCodes')
   const autoDisableParsed = useMemo(
@@ -246,6 +322,7 @@ export function MonitoringSettingsSection({
     }
 
     baselineRef.current = normalized
+    baselineSerializedRef.current = JSON.stringify(normalized)
   }
 
   return (
@@ -305,6 +382,29 @@ export function MonitoringSettingsSection({
           <div className='grid gap-6 md:grid-cols-2'>
             <FormField
               control={form.control}
+              name='UserQuotaNotifyEnabled'
+              render={({ field }) => (
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>{t('User quota alerts')}</FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Notify users when their remaining quota drops below the configured threshold, including personal and enterprise-billed API keys.'
+                      )}
+                    </FormDescription>
+                  </SettingsSwitchContent>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </SettingsSwitchItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name='ChannelDisableThreshold'
               render={({ field }) => (
                 <FormItem>
@@ -344,7 +444,34 @@ export function MonitoringSettingsSection({
                     />
                   </FormControl>
                   <FormDescription>
-                    {t('Send email alerts when a user falls below this quota')}
+                    {t(
+                      'Trigger user quota alerts when the remaining personal or enterprise allocation balance is below this value.'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='enterprise_setting.balance_warning_percent'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Enterprise balance warning (%)')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={1}
+                      max={100}
+                      step={1}
+                      {...safeNumberFieldProps(field)}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Enterprise balance turns red when the main account balance falls below this percentage of the enterprise fund pool.'
+                    )}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -353,6 +480,31 @@ export function MonitoringSettingsSection({
           </div>
 
           <div className='grid gap-6 md:grid-cols-2'>
+            <FormField
+              control={form.control}
+              name='enterprise_setting.balance_email_notify_enabled'
+              render={({ field }) => (
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>
+                      {t('Enterprise balance email alerts')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Send an email to the enterprise creator when the enterprise balance is below the warning percentage.'
+                      )}
+                    </FormDescription>
+                  </SettingsSwitchContent>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </SettingsSwitchItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name='AutomaticDisableChannelEnabled'
@@ -392,6 +544,112 @@ export function MonitoringSettingsSection({
                     />
                   </FormControl>
                 </SettingsSwitchItem>
+              )}
+            />
+          </div>
+
+
+          <div>
+            <h4 className='font-medium'>{t('Model performance metrics')}</h4>
+            <p className='text-muted-foreground mt-1 text-xs'>
+              {t(
+                'Collect relay latency and success-rate metrics for the model square.'
+              )}
+            </p>
+          </div>
+
+          <div className='grid grid-cols-1 gap-4 md:grid-cols-4'>
+            <FormField
+              control={form.control}
+              name='perf_metrics_setting.enabled'
+              render={({ field }) => (
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>
+                      {t('Enable model performance metrics')}
+                    </FormLabel>
+                  </SettingsSwitchContent>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </SettingsSwitchItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='perf_metrics_setting.flush_interval'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Flush interval (minutes)')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={1}
+                      step={1}
+                      {...safeNumberFieldProps(field)}
+                      disabled={!perfMetricsEnabled}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='perf_metrics_setting.bucket_time'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Aggregation bucket')}</FormLabel>
+                  <Select
+                    items={[
+                      { value: 'minute', label: t('1 minute') },
+                      { value: '5min', label: t('5 minutes') },
+                      { value: 'hour', label: t('1 hour') },
+                    ]}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={!perfMetricsEnabled}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        <SelectItem value='minute'>{t('1 minute')}</SelectItem>
+                        <SelectItem value='5min'>{t('5 minutes')}</SelectItem>
+                        <SelectItem value='hour'>{t('1 hour')}</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='perf_metrics_setting.retention_days'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Retention days')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={0}
+                      step={1}
+                      {...safeNumberFieldProps(field)}
+                      disabled={!perfMetricsEnabled}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('0 means data is kept permanently')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
               )}
             />
           </div>

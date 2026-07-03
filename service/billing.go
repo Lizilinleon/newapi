@@ -13,6 +13,7 @@ import (
 const (
 	BillingSourceWallet       = "wallet"
 	BillingSourceSubscription = "subscription"
+	BillingSourceEnterprise   = "enterprise"
 )
 
 func billingUserId(relayInfo *relaycommon.RelayInfo) int {
@@ -88,6 +89,7 @@ func SettleBilling(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, actualQuo
 				checkAndSendSubscriptionQuotaNotify(relayInfo)
 			} else {
 				checkAndSendQuotaNotify(relayInfo, actualQuota-preConsumed, preConsumed)
+				checkAndSendEnterpriseBalanceNotify(relayInfo, actualQuota)
 			}
 		}
 		return nil
@@ -102,6 +104,7 @@ func SettleBilling(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, actualQuo
 		if actualQuota > 0 && billingUserId(relayInfo) != relayInfo.UserId {
 			model.UpdateUserUsedQuotaAndRequestCount(billingUserId(relayInfo), actualQuota)
 		}
+		checkAndSendEnterpriseBalanceNotify(relayInfo, actualQuota)
 		return nil
 	}
 	if actualQuota > 0 && billingUserId(relayInfo) != relayInfo.UserId {

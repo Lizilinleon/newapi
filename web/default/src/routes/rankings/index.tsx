@@ -21,7 +21,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 
 const rankingsSearchSchema = z.object({
   period: z
-    .enum(['today', 'week', 'month', 'year', 'all'])
+    .enum(['today', 'week', 'month', 'year'])
     .optional()
     .catch(undefined),
 })
@@ -29,6 +29,6 @@ const rankingsSearchSchema = z.object({
 export const Route = createFileRoute('/rankings/')({
   validateSearch: rankingsSearchSchema,
   beforeLoad: async () => {
-    throw redirect({ to: '/dashboard' })
+    throw redirect({ to: '/enterprise' })
   },
 })

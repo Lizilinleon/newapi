@@ -63,7 +63,8 @@ const queryClient = new QueryClient({
           [401, 403].includes(error.response?.status ?? 0)
         )
       },
-      refetchOnWindowFocus: import.meta.env.PROD,
+      // Keep focused tabs from silently re-running heavy pages like logs.
+      refetchOnWindowFocus: false,
       staleTime: 10 * 1000, // 10s
     },
     mutations: {
@@ -84,7 +85,7 @@ const queryClient = new QueryClient({
         if (error.response?.status === 401) {
           toast.error(i18next.t('Session expired!'))
           useAuthStore.getState().auth.reset()
-          router.navigate({ to: '/dashboard' })
+          router.navigate({ to: '/enterprise' })
         }
         if (error.response?.status === 500) {
           toast.error(i18next.t('Internal Server Error!'))

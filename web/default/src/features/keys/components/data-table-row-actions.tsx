@@ -16,34 +16,42 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useCallback, useState } from 'react'
-import { type Row } from '@tanstack/react-table'
+import { useCallback, useState, type MouseEvent } from 'react'
+import type { Row } from '@tanstack/react-table'
 import {
-  Trash2,
-  Edit,
-  Power,
-  PowerOff,
-  ExternalLink,
-  ArrowRightLeft,
+  CloudUpload,
   Copy,
+  Edit,
+  ExternalLink,
   Link,
   Loader2,
-  MoreHorizontal as DotsHorizontalIcon,
+  Power,
+  PowerOff,
+  Trash2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
+import { cn } from '@/lib/utils'
+import { DataTableRowActionMenu } from '@/components/data-table/core/row-action-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
   Tooltip,
@@ -53,6 +61,7 @@ import {
 import { useChatPresets } from '@/features/chat/hooks/use-chat-presets'
 import { resolveChatUrl, type ChatPreset } from '@/features/chat/lib/chat-links'
 import { sendToFluent } from '@/features/chat/lib/send-to-fluent'
+
 import { updateApiKeyStatus } from '../api'
 import { API_KEY_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import { apiKeySchema } from '../types'
@@ -83,6 +92,9 @@ type DataTableRowActionsProps<TData> = {
   row: Row<TData>
 }
 
+const inlineActionButtonClass =
+  'h-8 gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-semibold shadow-xs transition-all hover:-translate-y-0.5 hover:bg-muted hover:shadow-sm dark:bg-input/30 dark:hover:bg-input/50'
+
 export function DataTableRowActions<TData>({
   row,
 }: DataTableRowActionsProps<TData>) {
@@ -100,10 +112,12 @@ export function DataTableRowActions<TData>({
   const isEnabled = apiKey.status === API_KEY_STATUS.ENABLED
   const { chatPresets, serverAddress } = useChatPresets()
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
+  const [disableConfirmOpen, setDisableConfirmOpen] = useState(false)
   const resolvedRealKey = resolvedKeys[apiKey.id]
   const isRealKeyLoading = Boolean(loadingKeys[apiKey.id])
 
   const hasChatPresets = chatPresets.length > 0
+  const toggleLabel = isEnabled ? t('Disable') : t('Enable')
 
   const handleMenuOpenChange = useCallback(
     (open: boolean) => {
@@ -120,6 +134,14 @@ export function DataTableRowActions<TData>({
     toast.info(t('API key is loading, please try again in a moment'))
     return null
   }, [apiKey.id, resolvedRealKey, resolveRealKey, t])
+
+  const handleOpenCCSwitch = useCallback(async () => {
+    const realKey = await resolveRealKey(apiKey.id)
+    if (!realKey) return
+    setResolvedKey(realKey)
+    setCurrentRow(apiKey)
+    setOpen('cc-switch')
+  }, [apiKey, resolveRealKey, setCurrentRow, setOpen, setResolvedKey])
 
   const handleOpenChatPreset = useCallback(
     async (preset: ChatPreset) => {
@@ -162,9 +184,7 @@ export function DataTableRowActions<TData>({
     [resolveRealKey, apiKey.id, serverAddress, t]
   )
 
-  const handleToggleStatus = async (
-    e?: React.MouseEvent<HTMLButtonElement>
-  ) => {
+  const handleToggleStatus = async (e?: MouseEvent<HTMLButtonElement>) => {
     e?.stopPropagation()
     const newStatus = isEnabled
       ? API_KEY_STATUS.DISABLED
@@ -189,51 +209,99 @@ export function DataTableRowActions<TData>({
     }
   }
 
-  return (
-    <div className='flex items-center justify-end gap-1'>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              variant='ghost'
-              size='icon-sm'
-              onClick={handleToggleStatus}
-              disabled={isTogglingStatus}
-              aria-label={isEnabled ? t('Disable') : t('Enable')}
-              className={
-                isEnabled
-                  ? 'text-destructive hover:text-destructive'
-                  : 'text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400'
-              }
-            />
-          }
-        >
-          {isTogglingStatus ? (
-            <Loader2 className='size-4 animate-spin' />
-          ) : isEnabled ? (
-            <PowerOff className='size-4' />
-          ) : (
-            <Power className='size-4' />
-          )}
-        </TooltipTrigger>
-        <TooltipContent>
-          {isEnabled ? t('Disable') : t('Enable')}
-        </TooltipContent>
-      </Tooltip>
+  let statusIcon = <Power className='size-4' />
+  if (isTogglingStatus) {
+    statusIcon = <Loader2 className='size-4 animate-spin' />
+  } else if (isEnabled) {
+    statusIcon = <PowerOff className='size-4' />
+  }
 
-      <DropdownMenu modal={false} onOpenChange={handleMenuOpenChange}>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant='ghost'
-              className='data-popup-open:bg-muted flex h-8 w-8 p-0'
-            />
-          }
+  return (
+    <>
+      <div className='-ml-1.5 flex items-center justify-end gap-1'>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={(event) => {
+                  if (isEnabled) {
+                    event.stopPropagation()
+                    setDisableConfirmOpen(true)
+                    return
+                  }
+                  void handleToggleStatus(event)
+                }}
+                disabled={isTogglingStatus}
+                aria-label={toggleLabel}
+                className={cn(
+                  inlineActionButtonClass,
+                  isEnabled
+                    ? 'text-destructive hover:text-destructive'
+                    : 'text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400'
+                )}
+              />
+            }
+          >
+            {statusIcon}
+            <span>{toggleLabel}</span>
+          </TooltipTrigger>
+          <TooltipContent>{toggleLabel}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={() => {
+                  setCurrentRow(apiKey)
+                  setOpen('update')
+                }}
+                aria-label={t('Edit')}
+                className={inlineActionButtonClass}
+              />
+            }
+          >
+            <Edit className='size-4' />
+            <span>{t('Edit')}</span>
+          </TooltipTrigger>
+          <TooltipContent>{t('Edit')}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={handleOpenCCSwitch}
+                disabled={isRealKeyLoading}
+                aria-label={t('CC Switch')}
+                className={inlineActionButtonClass}
+              />
+            }
+          >
+            {isRealKeyLoading ? (
+              <Loader2 className='size-4 animate-spin' />
+            ) : (
+              <CloudUpload className='size-4' />
+            )}
+            <span>{t('CC Switch')}</span>
+          </TooltipTrigger>
+          <TooltipContent>{t('CC Switch')}</TooltipContent>
+        </Tooltip>
+
+        <DataTableRowActionMenu
+          ariaLabel={t('Open menu')}
+          contentClassName='w-[200px]'
+          triggerClassName={inlineActionButtonClass}
+          triggerLabel={t('More')}
+          modal={false}
+          onOpenChange={handleMenuOpenChange}
         >
-          <DotsHorizontalIcon className='h-4 w-4' />
-          <span className='sr-only'>{t('Open menu')}</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align='end' className='w-[200px]'>
           <DropdownMenuItem
             onClick={async () => {
               const realKey = getCachedRealKey()
@@ -251,10 +319,7 @@ export function DataTableRowActions<TData>({
             onClick={async () => {
               const realKey = getCachedRealKey()
               if (!realKey) return
-              const connStr = encodeConnectionString(
-                realKey,
-                getServerAddress()
-              )
+              const connStr = encodeConnectionString(realKey, getServerAddress())
               const ok = await copyToClipboard(connStr)
               if (ok) toast.success(t('Copied'))
             }}
@@ -265,31 +330,6 @@ export function DataTableRowActions<TData>({
             </DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(apiKey)
-              setOpen('update')
-            }}
-          >
-            {t('Edit')}
-            <DropdownMenuShortcut>
-              <Edit size={16} />
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={async () => {
-              const realKey = await resolveRealKey(apiKey.id)
-              if (!realKey) return
-              setResolvedKey(realKey)
-              setCurrentRow(apiKey)
-              setOpen('cc-switch')
-            }}
-          >
-            {t('CC Switch')}
-            <DropdownMenuShortcut>
-              <ArrowRightLeft size={16} />
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
           {hasChatPresets && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>{t('Chat')}</DropdownMenuSubTrigger>
@@ -310,7 +350,7 @@ export function DataTableRowActions<TData>({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}
-          <DropdownMenuSeparator />
+          {hasChatPresets && <DropdownMenuSeparator />}
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(apiKey)
@@ -323,8 +363,40 @@ export function DataTableRowActions<TData>({
               <Trash2 size={16} />
             </DropdownMenuShortcut>
           </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+        </DataTableRowActionMenu>
+      </div>
+
+      <AlertDialog
+        open={disableConfirmOpen}
+        onOpenChange={setDisableConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('Disable this API key?')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                'After disabling, this API key can no longer be used for requests until you enable it again.'
+              )}{' '}
+              <span className='font-medium'>{apiKey.name}</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isTogglingStatus}>
+              {t('Cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant='destructive'
+              disabled={isTogglingStatus}
+              onClick={(event) => {
+                void handleToggleStatus(event)
+                setDisableConfirmOpen(false)
+              }}
+            >
+              {isTogglingStatus ? t('Disabling...') : t('Disable')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

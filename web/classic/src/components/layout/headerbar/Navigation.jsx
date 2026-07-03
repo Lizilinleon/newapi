@@ -18,8 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Link } from 'react-router-dom';
 import SkeletonWrapper from '../components/SkeletonWrapper';
+import { getDefaultConsoleUrl } from '../../../helpers/defaultConsole';
 
 const Navigation = ({
   mainNavLinks,
@@ -53,18 +53,24 @@ const Navigation = ({
         );
       }
 
-      let targetPath = link.to;
-      if (link.itemKey === 'console' && !userState.user) {
-        targetPath = '/console';
-      }
-      if (link.itemKey === 'pricing' && pricingRequireAuth && !userState.user) {
-        targetPath = '/console';
+      if (link.itemKey === 'console') {
+        return (
+          <a
+            key={link.itemKey}
+            href={getDefaultConsoleUrl('/enterprise')}
+            className={commonLinkClasses}
+          >
+            {linkContent}
+          </a>
+        );
       }
 
+      const targetPath = link.to;
+
       return (
-        <Link key={link.itemKey} to={targetPath} className={commonLinkClasses}>
+        <a key={link.itemKey} href={targetPath} className={commonLinkClasses}>
           {linkContent}
-        </Link>
+        </a>
       );
     });
   };

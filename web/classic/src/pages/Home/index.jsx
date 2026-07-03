@@ -30,6 +30,7 @@ import { useIsMobile } from '../../hooks/common/useIsMobile';
 import { API_ENDPOINTS } from '../../constants/common.constant';
 import { StatusContext } from '../../context/Status';
 import { useActualTheme } from '../../context/Theme';
+import { getDefaultConsoleUrl } from '../../helpers/defaultConsole';
 import { marked } from 'marked';
 import { useTranslation } from 'react-i18next';
 import {
@@ -38,7 +39,6 @@ import {
   IconFile,
   IconCopy,
 } from '@douyinfe/semi-icons';
-import { Link } from 'react-router-dom';
 import NoticeModal from '../../components/layout/NoticeModal';
 import {
   Moonshot,
@@ -56,7 +56,7 @@ import {
   Qingyan,
   DeepSeek,
   Qwen,
-  Midjourney,
+  Midjourney as MjProxyIcon,
   Grok,
   AzureAI,
   Hunyuan,
@@ -213,7 +213,7 @@ const Home = () => {
 
                 {/* 操作按钮 */}
                 <div className='flex flex-row gap-4 justify-center items-center'>
-                  <Link to='/console'>
+                  <a href={getDefaultConsoleUrl('/enterprise')}>
                     <Button
                       theme='solid'
                       type='primary'
@@ -223,7 +223,7 @@ const Home = () => {
                     >
                       {t('获取密钥')}
                     </Button>
-                  </Link>
+                  </a>
                   {isDemoSiteMode && statusState?.status?.version ? (
                     <Button
                       size={isMobile ? 'default' : 'large'}
@@ -309,7 +309,7 @@ const Home = () => {
                       <Qwen.Color size={40} />
                     </div>
                     <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Midjourney size={40} />
+                      <MjProxyIcon size={40} />
                     </div>
                     <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
                       <Grok size={40} />
@@ -339,7 +339,7 @@ const Home = () => {
           {homePageContent.startsWith('https://') ? (
             <iframe
               src={homePageContent}
-              className='w-full h-full border-none'
+              className='w-full h-screen border-none'
             />
           ) : (
             <div

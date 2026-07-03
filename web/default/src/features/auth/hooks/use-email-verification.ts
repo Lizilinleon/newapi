@@ -42,7 +42,7 @@ export function useEmailVerification(options?: UseEmailVerificationOptions) {
   /**
    * Send verification code to email
    */
-  const sendCode = async (email: string) => {
+  const sendCode = async (email: string, username?: string) => {
     if (!email) {
       toast.error(i18next.t('Please enter your email first'))
       return false
@@ -55,7 +55,11 @@ export function useEmailVerification(options?: UseEmailVerificationOptions) {
 
     setIsSending(true)
     try {
-      const res = await sendEmailVerification(email, options?.turnstileToken)
+      const res = await sendEmailVerification(
+        email,
+        username,
+        options?.turnstileToken
+      )
       if (res?.success) {
         startCountdown()
         toast.success(i18next.t('Verification email sent'))

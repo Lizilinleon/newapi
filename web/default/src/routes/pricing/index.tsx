@@ -17,7 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import z from 'zod'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import { ClassicPricing } from '@/features/classic-pricing'
 
 const pricingSearchSchema = z.object({
   search: z.string().optional(),
@@ -34,7 +35,5 @@ const pricingSearchSchema = z.object({
 
 export const Route = createFileRoute('/pricing/')({
   validateSearch: pricingSearchSchema,
-  beforeLoad: async () => {
-    throw redirect({ to: '/dashboard' })
-  },
+  component: ClassicPricing,
 })

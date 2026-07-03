@@ -29,6 +29,7 @@ import {
 } from '@douyinfe/semi-icons';
 import { stringToColor } from '../../../helpers';
 import SkeletonWrapper from '../components/SkeletonWrapper';
+import { getDefaultConsoleUrl } from '../../../helpers/defaultConsole';
 
 const UserArea = ({
   userState,
@@ -36,10 +37,12 @@ const UserArea = ({
   isMobile,
   isSelfUseMode,
   logout,
-  navigate,
   t,
 }) => {
   const dropdownRef = useRef(null);
+  const goDefaultConsole = (path) => {
+    window.location.assign(getDefaultConsoleUrl(path));
+  };
   if (isLoading) {
     return (
       <SkeletonWrapper
@@ -61,7 +64,7 @@ const UserArea = ({
             <Dropdown.Menu className='!bg-semi-color-bg-overlay !border-semi-color-border !shadow-lg !rounded-lg dark:!bg-gray-700 dark:!border-gray-600'>
               <Dropdown.Item
                 onClick={() => {
-                  navigate('/console/personal');
+                  goDefaultConsole('/profile');
                 }}
                 className='!px-3 !py-1.5 !text-sm !text-semi-color-text-0 hover:!bg-semi-color-fill-1 dark:!text-gray-200 dark:hover:!bg-blue-500 dark:hover:!text-white'
               >
@@ -75,7 +78,7 @@ const UserArea = ({
               </Dropdown.Item>
               <Dropdown.Item
                 onClick={() => {
-                  navigate('/console/token');
+                  goDefaultConsole('/keys');
                 }}
                 className='!px-3 !py-1.5 !text-sm !text-semi-color-text-0 hover:!bg-semi-color-fill-1 dark:!text-gray-200 dark:hover:!bg-blue-500 dark:hover:!text-white'
               >
@@ -89,7 +92,7 @@ const UserArea = ({
               </Dropdown.Item>
               <Dropdown.Item
                 onClick={() => {
-                  navigate('/console/topup');
+                  goDefaultConsole('/wallet');
                 }}
                 className='!px-3 !py-1.5 !text-sm !text-semi-color-text-0 hover:!bg-semi-color-fill-1 dark:!text-gray-200 dark:hover:!bg-blue-500 dark:hover:!text-white'
               >
@@ -170,7 +173,7 @@ const UserArea = ({
 
     return (
       <div className='flex items-center'>
-        <Link to='/console' className='flex'>
+        <a href={getDefaultConsoleUrl('/enterprise')} className='flex'>
           <Button
             theme='borderless'
             type='tertiary'
@@ -178,7 +181,7 @@ const UserArea = ({
           >
             <span className={loginButtonTextSpanClass}>{t('控制台')}</span>
           </Button>
-        </Link>
+        </a>
         {showRegisterButton && (
           <div className='hidden md:block'>
             <Link to='/register' className='flex -ml-px'>
