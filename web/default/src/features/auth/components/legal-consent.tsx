@@ -58,7 +58,7 @@ export function LegalConsent({
         id='legal-consent'
         checked={checked}
         onCheckedChange={handleChange}
-        className='mt-0.5'
+        className='mt-0.5 size-5 rounded-full border-2 border-slate-500/80 bg-white/10 shadow-[inset_0_0_0_3px_rgba(255,255,255,0.05),0_0_0_1px_rgba(255,255,255,0.08)] transition hover:border-cyan-300 hover:bg-cyan-300/10 dark:border-slate-400/70 dark:bg-white/10 data-checked:border-cyan-300 data-checked:bg-cyan-400 data-checked:text-slate-950 dark:data-checked:bg-cyan-300 [&_svg]:size-4'
       />
       <Label
         htmlFor='legal-consent'
@@ -76,7 +76,12 @@ export function LegalConsent({
               {t('User Agreement')}
             </a>
           )}
-          {hasUserAgreement && hasPrivacyPolicy && ' and the '}
+          {hasUserAgreement && hasPrivacyPolicy && (
+            <>
+              {' '}
+              {t('and')}{' '}
+            </>
+          )}
           {hasPrivacyPolicy && (
             <a
               href='/privacy-policy'
@@ -93,3 +98,4 @@ export function LegalConsent({
     </div>
   )
 }
+

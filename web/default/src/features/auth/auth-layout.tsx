@@ -20,8 +20,8 @@ import { useTranslation } from 'react-i18next'
 import { Link } from '@tanstack/react-router'
 import { BookOpen, Monitor } from 'lucide-react'
 import { useSystemConfig } from '@/hooks/use-system-config'
-import { useStatus } from '@/hooks/use-status'
 import { cn } from '@/lib/utils'
+import { getDocsServiceUrl } from '@/lib/docs-url'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { LanguageSwitcher } from '@/components/language-switcher'
@@ -33,9 +33,8 @@ type AuthLayoutProps = {
 
 export function AuthLayout({ children }: AuthLayoutProps) {
   const { t } = useTranslation()
-  const { status } = useStatus()
   const { systemName, logo, loading, logoLoaded } = useSystemConfig()
-  const docsLink = (status?.docs_link as string | undefined) || '/about'
+  const docsLink = getDocsServiceUrl()
 
   const navLinkClass =
     'rounded-full px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:bg-gradient-to-r hover:text-blue-800 dark:text-slate-300 dark:hover:text-cyan-100'
@@ -138,8 +137,11 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             <Button
               variant='ghost'
               size='icon-lg'
-              aria-label={t('Notifications')}
+              aria-label={t('Docs')}
               className='hidden rounded-full sm:inline-flex'
+              render={
+                <a href={docsLink} target='_blank' rel='noopener noreferrer' />
+              }
             >
               <BookOpen />
             </Button>
@@ -180,3 +182,4 @@ export function AuthLayout({ children }: AuthLayoutProps) {
     </div>
   )
 }
+

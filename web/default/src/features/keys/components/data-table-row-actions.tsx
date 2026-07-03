@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useCallback, useState, type MouseEvent } from 'react'
 import type { Row } from '@tanstack/react-table'
 import {
-  ArrowRightLeft,
+  CloudUpload,
   Copy,
   Edit,
   ExternalLink,
@@ -32,6 +32,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
+import { cn } from '@/lib/utils'
 import { DataTableRowActionMenu } from '@/components/data-table/core/row-action-menu'
 import {
   AlertDialog,
@@ -90,6 +91,9 @@ function encodeConnectionString(key: string, url: string): string {
 type DataTableRowActionsProps<TData> = {
   row: Row<TData>
 }
+
+const inlineActionButtonClass =
+  'h-8 gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-semibold shadow-xs transition-all hover:-translate-y-0.5 hover:bg-muted hover:shadow-sm dark:bg-input/30 dark:hover:bg-input/50'
 
 export function DataTableRowActions<TData>({
   row,
@@ -220,7 +224,7 @@ export function DataTableRowActions<TData>({
             render={
               <Button
                 variant='ghost'
-                size='icon-sm'
+                size='sm'
                 onClick={(event) => {
                   if (isEnabled) {
                     event.stopPropagation()
@@ -231,15 +235,17 @@ export function DataTableRowActions<TData>({
                 }}
                 disabled={isTogglingStatus}
                 aria-label={toggleLabel}
-                className={
+                className={cn(
+                  inlineActionButtonClass,
                   isEnabled
                     ? 'text-destructive hover:text-destructive'
                     : 'text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400'
-                }
+                )}
               />
             }
           >
             {statusIcon}
+            <span>{toggleLabel}</span>
           </TooltipTrigger>
           <TooltipContent>{toggleLabel}</TooltipContent>
         </Tooltip>
@@ -249,16 +255,18 @@ export function DataTableRowActions<TData>({
             render={
               <Button
                 variant='ghost'
-                size='icon-sm'
+                size='sm'
                 onClick={() => {
                   setCurrentRow(apiKey)
                   setOpen('update')
                 }}
                 aria-label={t('Edit')}
+                className={inlineActionButtonClass}
               />
             }
           >
             <Edit className='size-4' />
+            <span>{t('Edit')}</span>
           </TooltipTrigger>
           <TooltipContent>{t('Edit')}</TooltipContent>
         </Tooltip>
@@ -268,18 +276,20 @@ export function DataTableRowActions<TData>({
             render={
               <Button
                 variant='ghost'
-                size='icon-sm'
+                size='sm'
                 onClick={handleOpenCCSwitch}
                 disabled={isRealKeyLoading}
                 aria-label={t('CC Switch')}
+                className={inlineActionButtonClass}
               />
             }
           >
             {isRealKeyLoading ? (
               <Loader2 className='size-4 animate-spin' />
             ) : (
-              <ArrowRightLeft className='size-4' />
+              <CloudUpload className='size-4' />
             )}
+            <span>{t('CC Switch')}</span>
           </TooltipTrigger>
           <TooltipContent>{t('CC Switch')}</TooltipContent>
         </Tooltip>
@@ -287,6 +297,8 @@ export function DataTableRowActions<TData>({
         <DataTableRowActionMenu
           ariaLabel={t('Open menu')}
           contentClassName='w-[200px]'
+          triggerClassName={inlineActionButtonClass}
+          triggerLabel={t('More')}
           modal={false}
           onOpenChange={handleMenuOpenChange}
         >

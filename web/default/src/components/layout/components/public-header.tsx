@@ -23,9 +23,9 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import { useNotifications } from '@/hooks/use-notifications'
-import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
+import { getDocsServiceUrl, isDocsLink } from '@/lib/docs-url'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LanguageSwitcher } from '@/components/language-switcher'
@@ -69,7 +69,6 @@ export function PublicHeader(props: PublicHeaderProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { auth } = useAuthStore()
-  const { status } = useStatus()
   const {
     systemName,
     logo: systemLogo,
@@ -85,10 +84,58 @@ export function PublicHeader(props: PublicHeaderProps) {
   const isAuthenticated = !!user
   const displaySiteName = customSiteName || systemName
   const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
-  const docsLink = (status?.docs_link as string | undefined) || '/about'
+  const docsLink = getDocsServiceUrl()
+  const normalizedLinks = links.map((link) =>
+    isDocsLink(link.title, link.href)
+      ? { ...link, href: docsLink, external: true, requiresAuth: false }
+      : link
+  )
+  const publicLinks: TopNavLink[] =
+    normalizedLinks.length > 0
+      ? normalizedLinks
+      : [
+          { title: 'Home', href: '/' },
+          { title: 'Console', href: '/enterprise' },
+          { title: 'Model Plaza', href: '/pricing' },
+          { title: 'Docs', href: docsLink, external: docsLink.startsWith('http') },
+          { title: 'About', href: '/about' },
+        ]
 
-  const navLinkClass =
-    'rounded-full px-5 py-2.5 text-base font-semibold text-slate-700 transition hover:bg-gradient-to-r hover:text-blue-800 dark:text-slate-300 dark:hover:text-cyan-100'
+  const getNavLinkClass = (href: string, title?: string) => {
+    if (title === 'Docs') {
+      return 'rounded-full px-5 py-2.5 text-slate-700 transition hover:bg-gradient-to-r hover:from-violet-500/14 hover:to-rose-500/12 hover:text-violet-700 dark:text-slate-300 dark:hover:text-fuchsia-200'
+    }
+
+    const isActive =
+      pathname === href ||
+      (href !== '/' && pathname.startsWith(href.replace(/\/$/, '')))
+
+    if (isActive) {
+      if (href === '/') {
+        return 'rounded-full bg-gradient-to-r from-blue-500/12 to-cyan-400/10 px-5 py-2.5 text-blue-800 shadow-sm ring-1 ring-blue-500/10 transition hover:from-blue-500/18 hover:to-cyan-400/16 dark:text-cyan-100 dark:ring-cyan-300/10'
+      }
+      if (href.startsWith('/enterprise')) {
+        return 'rounded-full bg-gradient-to-r from-indigo-500/14 to-rose-500/12 px-5 py-2.5 text-indigo-700 shadow-sm ring-1 ring-indigo-500/10 transition dark:text-indigo-200 dark:ring-indigo-300/10'
+      }
+      if (href.startsWith('/pricing')) {
+        return 'rounded-full bg-gradient-to-r from-emerald-400/14 via-cyan-400/12 to-rose-400/12 px-5 py-2.5 text-emerald-700 shadow-sm ring-1 ring-emerald-500/10 transition dark:text-emerald-200 dark:ring-emerald-300/10'
+      }
+      if (href.startsWith('/about')) {
+        return 'rounded-full bg-gradient-to-r from-orange-400/12 to-rose-500/14 px-5 py-2.5 text-rose-700 shadow-sm ring-1 ring-rose-500/10 transition dark:text-rose-200 dark:ring-rose-300/10'
+      }
+    }
+
+    if (href.startsWith('/enterprise')) {
+      return 'rounded-full px-5 py-2.5 text-slate-700 transition hover:bg-gradient-to-r hover:from-indigo-500/14 hover:to-rose-500/12 hover:text-indigo-700 dark:text-slate-300 dark:hover:text-indigo-200'
+    }
+    if (href.startsWith('/pricing')) {
+      return 'rounded-full px-5 py-2.5 text-slate-700 transition hover:bg-gradient-to-r hover:from-emerald-400/14 hover:via-cyan-400/12 hover:to-rose-400/12 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-200'
+    }
+    if (href.startsWith('/about')) {
+      return 'rounded-full px-5 py-2.5 text-slate-700 transition hover:bg-gradient-to-r hover:from-orange-400/12 hover:to-rose-500/14 hover:text-rose-700 dark:text-slate-300 dark:hover:text-rose-200'
+    }
+    return 'rounded-full px-5 py-2.5 text-slate-700 transition hover:bg-gradient-to-r hover:from-blue-500/14 hover:to-cyan-400/12 hover:text-blue-700 dark:text-slate-300 dark:hover:text-cyan-200'
+  }
   const loginLinkClass =
     'h-11 rounded-full border-slate-300 bg-white px-6 text-base font-bold text-slate-950 shadow-sm hover:bg-slate-100 dark:border-white/20 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200'
   const registerLinkClass =
@@ -147,12 +194,10 @@ export function PublicHeader(props: PublicHeaderProps) {
             )}
           </Link>
 
-          <nav className='hidden items-center gap-1.5 rounded-full border border-white/70 bg-white/52 p-1.5 shadow-[0_14px_40px_-28px_rgba(14,165,233,0.95)] backdrop-blur-xl lg:flex dark:border-white/10 dark:bg-white/5'>
-            {links.map((link, i) => {
-              const isActive = pathname === link.href
+          <nav className='hidden items-center gap-1.5 rounded-full border border-white/70 bg-white/52 p-1.5 text-base font-semibold shadow-[0_14px_40px_-28px_rgba(14,165,233,0.95)] backdrop-blur-xl lg:flex dark:border-white/10 dark:bg-white/5'>
+            {publicLinks.map((link, i) => {
               const linkClassName = cn(
-                navLinkClass,
-                isActive && 'bg-white/65 text-blue-800 shadow-sm dark:bg-white/10 dark:text-cyan-100',
+                getNavLinkClass(link.href, link.title),
                 link.disabled && 'pointer-events-none opacity-50'
               )
 
@@ -236,7 +281,7 @@ export function PublicHeader(props: PublicHeaderProps) {
                 <Button
                   variant='outline'
                   className={loginLinkClass}
-                  render={<Link to='/sign-in' />}
+                  render={<Link to='/enterprise' />}
                 >
                   {t('Login')}
                 </Button>

@@ -76,7 +76,7 @@ function FooterLinkItem(props: { link: FooterLink }) {
 // Renders User Agreement / Privacy Policy links inline with the parent's
 // copyright row when either is configured in System Settings → Site. Emits
 // fragmented siblings so the parent flex container's gap controls spacing.
-function LegalLinks(props: { leadingSeparator?: boolean }) {
+function LegalLinks(props: { leadingSeparator?: boolean; inverse?: boolean }) {
   const { t } = useTranslation()
   const { status } = useStatus()
   const items: { key: string; label: string; href: string }[] = []
@@ -108,7 +108,12 @@ function LegalLinks(props: { leadingSeparator?: boolean }) {
           )}
           <Link
             to={item.href}
-            className='underline underline-offset-4 transition-colors duration-200 hover:text-foreground'
+            className={cn(
+              'underline underline-offset-4 transition-colors duration-200',
+              props.inverse
+                ? 'hover:text-white/86'
+                : 'hover:text-foreground/80'
+            )}
           >
             {item.label}
           </Link>
@@ -246,7 +251,7 @@ export function Footer(props: FooterProps) {
             <div
               className={cn(
                 'text-muted-foreground/60 mt-4 space-y-3 text-xl leading-relaxed',
-                centered ? 'max-w-[820px]' : 'max-w-[420px]',
+                centered ? 'max-w-[820px]' : 'max-w-[760px]',
                 inverse && 'text-white/68',
                 centered && 'mx-auto text-center'
               )}
@@ -324,7 +329,7 @@ export function Footer(props: FooterProps) {
                   className='custom-footer max-w-full break-words text-center [&_p]:m-0 [&_p]:inline [&_span]:align-baseline [&_a]:align-baseline'
                   dangerouslySetInnerHTML={{ __html: footerHtml }}
                 />
-                <LegalLinks leadingSeparator />
+                <LegalLinks leadingSeparator inverse={inverse} />
               </>
             ) : (
               <>
@@ -332,7 +337,7 @@ export function Footer(props: FooterProps) {
                   &copy; {currentYear} {displayName}.{' '}
                   {props.copyright ?? t('footer.defaultCopyright')}
                 </span>
-                <LegalLinks leadingSeparator />
+                <LegalLinks leadingSeparator inverse={inverse} />
               </>
             )}
           </div>

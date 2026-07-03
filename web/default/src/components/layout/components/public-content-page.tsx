@@ -25,8 +25,8 @@ import { Button } from '@/components/ui/button'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { Footer } from '@/components/layout/components/footer'
-import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { getDocsServiceUrl } from '@/lib/docs-url'
 
 type PublicContentPageProps = {
   activeNav?: 'about' | null
@@ -65,10 +65,9 @@ export function PublicContentPage({
   emptyState = null,
 }: PublicContentPageProps) {
   const { t } = useTranslation()
-  const { status } = useStatus()
   const { systemName, logo, logoLoaded } = useSystemConfig()
 
-  const docsLink = (status?.docs_link as string | undefined) || '/about'
+  const docsLink = getDocsServiceUrl()
   const footerColumns = [
     {
       title: '',
@@ -212,3 +211,4 @@ export function PublicContentPage({
     </div>
   )
 }
+

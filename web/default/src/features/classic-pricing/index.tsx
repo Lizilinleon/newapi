@@ -1,4 +1,4 @@
-﻿import '@douyinfe/semi-ui/react19-adapter'
+import '@douyinfe/semi-ui/react19-adapter'
 import '@douyinfe/semi-ui/dist/css/semi.css'
 import 'react-toastify/dist/ReactToastify.css'
 import '../../../../classic/src/i18n/i18n'
@@ -20,8 +20,8 @@ import { API, setStatusData, showError } from '../../../../classic/src/helpers'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { LanguageSwitcher } from '@/components/language-switcher'
-import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { getDocsServiceUrl } from '@/lib/docs-url'
 
 export function ClassicPricing() {
   return (
@@ -77,9 +77,8 @@ function ClassicPricingContent() {
 
 function PricingHeader() {
   const { t } = useTranslation()
-  const { status } = useStatus()
   const { systemName, logo, logoLoaded } = useSystemConfig()
-  const docsLink = (status?.docs_link as string | undefined) || '/about'
+  const docsLink = getDocsServiceUrl()
 
   return (
     <header className='classic-pricing-header fixed inset-x-0 top-0 z-50 border-b border-white/40 bg-white/68 shadow-[0_12px_44px_-28px_rgba(14,165,233,0.95)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/58 dark:shadow-none'>
@@ -140,7 +139,10 @@ function PricingHeader() {
             variant='ghost'
             size='icon-lg'
             className='hidden rounded-full sm:inline-flex'
-            aria-label={t('Notifications')}
+            aria-label={t('Docs')}
+            render={
+              <a href={docsLink} target='_blank' rel='noopener noreferrer' />
+            }
           >
             <BookOpen />
           </Button>
@@ -174,4 +176,5 @@ function PricingHeader() {
     </header>
   )
 }
+
 

@@ -121,6 +121,7 @@ import {
   useApiKeys,
 } from '@/features/keys/components/api-keys-provider'
 import { useApiKeysColumns } from '@/features/keys/components/api-keys-columns'
+import { CCSwitchDownloadLinks } from '@/features/keys/components/cc-switch-download-links'
 import { DataTableBulkActions } from '@/features/keys/components/data-table-bulk-actions'
 import { CCSwitchDialog } from '@/features/keys/components/dialogs/cc-switch-dialog'
 import { createApiKey } from '@/features/keys/api'
@@ -1773,45 +1774,48 @@ function OwnerPersonalApiKeysPanelContent(props: {
         </CardAction>
       </CardHeader>
       <CardContent>
-        <DataTablePage
-          table={table}
-          columns={columns}
-          isLoading={tokensQuery.isLoading}
-          isFetching={tokensQuery.isFetching}
-          emptyTitle={t('No API Keys Found')}
-          emptyDescription={t('No company-billed API keys yet.')}
-          skeletonKeyPrefix='owner-company-api-keys-skeleton'
-          toolbarProps={{
-            searchPlaceholder: t('Filter by name...'),
-            additionalSearch: (
-              <Input
-                placeholder={t('Filter by API key...')}
-                aria-label={t('Filter by API key...')}
-                value={tokenFilterInput}
-                onChange={(event) => setTokenFilterInput(event.target.value)}
-                className='w-full sm:w-50 lg:w-60'
-              />
-            ),
-            hasAdditionalFilters: Boolean(tokenFilterInput),
-            onReset: () => setTokenFilterInput(''),
-            filters: [
-              {
-                columnId: 'status',
-                title: t('Status'),
-                options: API_KEY_STATUS_OPTIONS,
-                singleSelect: true,
-              },
-            ],
-          }}
-          getRowClassName={(row, ctx) =>
-            row.original.status !== API_KEY_STATUS.ENABLED
-              ? ctx.isMobile
-                ? DISABLED_ROW_MOBILE
-                : DISABLED_ROW_DESKTOP
-              : undefined
-          }
-          bulkActions={<DataTableBulkActions table={table} />}
-        />
+        <div className='flex flex-col gap-3'>
+          <CCSwitchDownloadLinks />
+          <DataTablePage
+            table={table}
+            columns={columns}
+            isLoading={tokensQuery.isLoading}
+            isFetching={tokensQuery.isFetching}
+            emptyTitle={t('No API Keys Found')}
+            emptyDescription={t('No company-billed API keys yet.')}
+            skeletonKeyPrefix='owner-company-api-keys-skeleton'
+            toolbarProps={{
+              searchPlaceholder: t('Filter by name...'),
+              additionalSearch: (
+                <Input
+                  placeholder={t('Filter by API key...')}
+                  aria-label={t('Filter by API key...')}
+                  value={tokenFilterInput}
+                  onChange={(event) => setTokenFilterInput(event.target.value)}
+                  className='w-full sm:w-50 lg:w-60'
+                />
+              ),
+              hasAdditionalFilters: Boolean(tokenFilterInput),
+              onReset: () => setTokenFilterInput(''),
+              filters: [
+                {
+                  columnId: 'status',
+                  title: t('Status'),
+                  options: API_KEY_STATUS_OPTIONS,
+                  singleSelect: true,
+                },
+              ],
+            }}
+            getRowClassName={(row, ctx) =>
+              row.original.status !== API_KEY_STATUS.ENABLED
+                ? ctx.isMobile
+                  ? DISABLED_ROW_MOBILE
+                  : DISABLED_ROW_DESKTOP
+                : undefined
+            }
+            bulkActions={<DataTableBulkActions table={table} />}
+          />
+        </div>
       </CardContent>
       <ApiKeysMutateDrawer
         open={open === 'create' || open === 'update'}
@@ -2111,6 +2115,7 @@ function CompanyBilledKeysCardContent(props: {
         </div>
       </div>
 
+      <CCSwitchDownloadLinks />
       <DataTablePage
         table={table}
         columns={columns}

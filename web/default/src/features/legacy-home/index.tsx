@@ -26,6 +26,7 @@ import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { getDocsServiceUrl } from '@/lib/docs-url'
 import { Footer } from '@/components/layout/components/footer'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitch } from '@/components/theme-switch'
@@ -147,7 +148,7 @@ export function LegacyHome() {
       `${window.location.origin}`,
     [heroOverrides.serverAddress, status?.server_address]
   )
-  const docsLink = (status?.docs_link as string | undefined) || '/about'
+  const docsLink = getDocsServiceUrl()
   const displayEndpoints =
     heroOverrides.endpoints?.length ? heroOverrides.endpoints : endpoints
   const endpoint = displayEndpoints[endpointIndex % displayEndpoints.length]
@@ -226,7 +227,15 @@ export function LegacyHome() {
           </div>
 
           <div className='flex items-center gap-2.5'>
-            <Button variant='ghost' size='icon-lg' className='hidden rounded-full sm:inline-flex' aria-label={t('Notifications')}>
+            <Button
+              variant='ghost'
+              size='icon-lg'
+              className='hidden rounded-full sm:inline-flex'
+              aria-label={t('Docs')}
+              render={
+                <a href={docsLink} target='_blank' rel='noopener noreferrer' />
+              }
+            >
               <BookOpen />
             </Button>
             <Button variant='ghost' size='icon-lg' className='hidden rounded-full sm:inline-flex' aria-label={t('Display')}>
@@ -364,7 +373,6 @@ export function LegacyHome() {
           className='border-0 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.22),transparent_24%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(17,24,39,0.98))] text-white'
           copyright='All rights reserved.'
           inverse
-          centered
           description={[
             t('Enterprise-ready large model gateway for unified model access.'),
             t('Stable routing, account management, billing control, and compliance-ready access experience.'),

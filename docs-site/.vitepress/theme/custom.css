@@ -1,0 +1,200 @@
+:root {
+  --vp-c-brand-1: #2563eb;
+  --vp-c-brand-2: #0284c7;
+  --vp-c-brand-3: #06b6d4;
+  --vp-c-brand-soft: rgba(14, 165, 233, 0.15);
+  --vp-font-family-base: "LXGW WenKai Screen", "Noto Serif SC", "Source Han Serif SC", "Microsoft YaHei", sans-serif;
+  --vp-font-family-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #38bdf8 10%, #818cf8 42%, #fb7185 78%);
+  --vp-home-hero-image-background-image: linear-gradient(135deg, rgba(56,189,248,.34), rgba(251,113,133,.28));
+  --vp-home-hero-image-filter: blur(54px);
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+.VPNav {
+  border-bottom: 1px solid rgba(148, 163, 184, .22);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(56, 189, 248, .20), transparent 32%),
+    linear-gradient(90deg, rgba(255, 255, 255, .92), rgba(248, 250, 252, .82)) !important;
+  box-shadow: 0 18px 50px -42px rgba(15, 23, 42, .65);
+  backdrop-filter: blur(22px);
+}
+
+.dark .VPNav {
+  border-bottom-color: rgba(148, 163, 184, .18);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(56, 189, 248, .20), transparent 34%),
+    linear-gradient(90deg, rgba(15, 23, 42, .86), rgba(30, 41, 59, .74)) !important;
+}
+
+.VPNavBarTitle .title,
+.VPNavBarMenuLink,
+.VPNavBarMenuLink:hover {
+  color: #0f172a;
+}
+
+.dark .VPNavBarTitle .title,
+.dark .VPNavBarMenuLink {
+  color: rgba(248, 250, 252, .88);
+}
+
+.dark .VPNavBarMenuLink:hover {
+  color: #67e8f9;
+}
+
+.VPNavBarSearch .DocSearch-Button,
+.VPNavBarSearch .DocSearch-Button:hover {
+  border: 1px solid rgba(148, 163, 184, .26);
+  background: rgba(255, 255, 255, .82);
+  color: #334155;
+}
+
+.dark .VPNavBarSearch .DocSearch-Button,
+.dark .VPNavBarSearch .DocSearch-Button:hover {
+  border-color: rgba(255, 255, 255, .14);
+  background: rgba(15, 23, 42, .58);
+  color: rgba(226, 232, 240, .9);
+}
+
+.VPNavBarTitle .title {
+  font-weight: 900;
+  letter-spacing: -.03em;
+}
+
+.VPHero {
+  position: relative;
+  overflow: hidden;
+}
+
+.VPHero::before {
+  content: "";
+  position: absolute;
+  inset: -160px -120px auto;
+  height: 520px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 48% 24%, rgba(14, 165, 233, .34), transparent 30%),
+    radial-gradient(circle at 68% 38%, rgba(244, 63, 94, .20), transparent 28%),
+    radial-gradient(circle at 32% 44%, rgba(99, 102, 241, .22), transparent 30%);
+  filter: blur(4px);
+}
+
+.VPHome .main {
+  position: relative;
+  z-index: 1;
+}
+
+.VPFeature {
+  border: 1px solid rgba(148, 163, 184, .18) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.78), rgba(248,250,252,.62)) !important;
+  box-shadow: 0 18px 60px -44px rgba(15, 23, 42, .5);
+}
+
+.dark .VPFeature {
+  background: linear-gradient(180deg, rgba(15,23,42,.82), rgba(15,23,42,.52)) !important;
+  box-shadow: 0 18px 70px -46px rgba(14, 165, 233, .7);
+}
+
+.VPDoc .content-container {
+  max-width: 880px !important;
+}
+
+.vp-doc h2 {
+  border-top: 0;
+  margin-top: 42px;
+}
+
+.vp-doc a {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.vp-doc table {
+  display: table;
+  width: 100%;
+}
+
+.doc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.doc-card {
+  min-height: 148px;
+  padding: 22px;
+  border: 1px solid rgba(148, 163, 184, .20);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 90% 10%, rgba(56, 189, 248, .20), transparent 32%),
+    linear-gradient(180deg, rgba(255,255,255,.72), rgba(248,250,252,.55));
+  box-shadow: 0 22px 70px -48px rgba(15, 23, 42, .58);
+  color: var(--vp-c-text-1) !important;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.doc-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(14, 165, 233, .45);
+  box-shadow: 0 28px 80px -50px rgba(14, 165, 233, .75);
+}
+
+.doc-card span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 20px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  color: white;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.doc-card strong,
+.doc-card em {
+  display: block;
+}
+
+.doc-card strong {
+  font-size: 20px;
+  letter-spacing: -.03em;
+}
+
+.doc-card em {
+  margin-top: 8px;
+  color: var(--vp-c-text-2);
+  font-style: normal;
+  line-height: 1.65;
+}
+
+.dark .doc-card {
+  background:
+    radial-gradient(circle at 90% 10%, rgba(56, 189, 248, .18), transparent 32%),
+    linear-gradient(180deg, rgba(15,23,42,.78), rgba(15,23,42,.48));
+}
+
+@media (max-width: 960px) {
+  .doc-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .doc-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .VPHero .name,
+  .VPHero .text {
+    font-size: 42px;
+    line-height: 1.05;
+  }
+}

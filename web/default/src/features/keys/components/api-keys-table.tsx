@@ -53,6 +53,7 @@ import { type ApiKey } from '../types'
 import { ApiKeyCell } from './api-keys-cells'
 import { useApiKeysColumns } from './api-keys-columns'
 import { useApiKeys } from './api-keys-provider'
+import { CCSwitchDownloadLinks } from './cc-switch-download-links'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { DataTableRowActions } from './data-table-row-actions'
 
@@ -287,42 +288,45 @@ export function ApiKeysTable() {
   })
 
   return (
-    <DataTablePage
-      table={table}
-      columns={columns}
-      isLoading={isLoading}
-      isFetching={isFetching}
-      emptyTitle={t('No API Keys Found')}
-      emptyDescription={t(
-        'No API keys available. Create your first API key to get started.'
-      )}
-      skeletonKeyPrefix='api-keys-skeleton'
-      applyHeaderSize
-      toolbarProps={{
-        searchPlaceholder: t('Filter by name...'),
-        additionalSearch: (
-          <Input
-            placeholder={t('Filter by API key...')}
-            aria-label={t('Filter by API key...')}
-            value={tokenFilterInput}
-            onChange={(e) => setTokenFilterInput(e.target.value)}
-            className='w-full sm:w-50 lg:w-60'
-          />
-        ),
-        filters: [
-          {
-            columnId: 'status',
-            title: t('Status'),
-            options: API_KEY_STATUS_OPTIONS,
-            singleSelect: true,
-          },
-        ],
-      }}
-      mobile={<ApiKeysMobileList table={table} isLoading={isLoading} />}
-      getRowClassName={(row) =>
-        isDisabledApiKeyRow(row.original) ? DISABLED_ROW_DESKTOP : undefined
-      }
-      bulkActions={<DataTableBulkActions table={table} />}
-    />
+    <div className='flex flex-col gap-3'>
+      <CCSwitchDownloadLinks />
+      <DataTablePage
+        table={table}
+        columns={columns}
+        isLoading={isLoading}
+        isFetching={isFetching}
+        emptyTitle={t('No API Keys Found')}
+        emptyDescription={t(
+          'No API keys available. Create your first API key to get started.'
+        )}
+        skeletonKeyPrefix='api-keys-skeleton'
+        applyHeaderSize
+        toolbarProps={{
+          searchPlaceholder: t('Filter by name...'),
+          additionalSearch: (
+            <Input
+              placeholder={t('Filter by API key...')}
+              aria-label={t('Filter by API key...')}
+              value={tokenFilterInput}
+              onChange={(e) => setTokenFilterInput(e.target.value)}
+              className='w-full sm:w-50 lg:w-60'
+            />
+          ),
+          filters: [
+            {
+              columnId: 'status',
+              title: t('Status'),
+              options: API_KEY_STATUS_OPTIONS,
+              singleSelect: true,
+            },
+          ],
+        }}
+        mobile={<ApiKeysMobileList table={table} isLoading={isLoading} />}
+        getRowClassName={(row) =>
+          isDisabledApiKeyRow(row.original) ? DISABLED_ROW_DESKTOP : undefined
+        }
+        bulkActions={<DataTableBulkActions table={table} />}
+      />
+    </div>
   )
 }

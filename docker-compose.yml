@@ -12,6 +12,17 @@
 # ============================================================================
 
 services:
+  docs:
+    build:
+      context: ./docs-site
+    image: armnet-docs:local
+    container_name: armnet-docs
+    restart: unless-stopped
+    ports:
+      - "5171:80"
+    networks:
+      - new-api-unit
+
   postgres:
     image: postgres:16
     container_name: newapi-postgres
