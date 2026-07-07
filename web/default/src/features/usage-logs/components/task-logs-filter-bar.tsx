@@ -33,8 +33,10 @@ import {
   LogsFilterInput,
   LogsFilterToolbar,
 } from './logs-filter-toolbar'
+import { useUsageLogsContext } from './usage-logs-provider'
 
-const route = getRouteApi('/_authenticated/usage-logs/$section')
+const userLogsRoute = getRouteApi('/_authenticated/usage-logs/$section')
+const adminLogsRoute = getRouteApi('/_authenticated/admin-logs/$section')
 
 type TaskLikeLogCategory = Extract<LogCategory, 'drawing' | 'task'>
 type TaskLogsFilters = DrawingLogFilters | TaskLogFilters
@@ -69,6 +71,8 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { mode, routeTo } = useUsageLogsContext()
+  const route = mode === 'admin' ? adminLogsRoute : userLogsRoute
   const searchParams = route.useSearch()
   const isAdmin = useIsAdmin()
   const fetchingLogs = useIsFetching({ queryKey: ['logs'] })
@@ -119,7 +123,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
   const handleApply = useCallback(() => {
     const filterParams = buildSearchParams(filters, props.logCategory)
     navigate({
-      to: '/usage-logs/$section',
+      to: routeTo,
       params: { section: props.logCategory },
       search: {
         ...filterParams,
@@ -127,7 +131,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
       },
     })
     queryClient.invalidateQueries({ queryKey: ['logs'] })
-  }, [filters, navigate, props.logCategory, queryClient])
+  }, [filters, navigate, props.logCategory, queryClient, routeTo])
 
   const handleReset = useCallback(() => {
     const { start, end } = getDefaultTimeRange()
@@ -135,7 +139,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
     setFilters(resetFilters)
 
     navigate({
-      to: '/usage-logs/$section',
+      to: routeTo,
       params: { section: props.logCategory },
       search: {
         page: 1,
@@ -144,7 +148,7 @@ export function TaskLogsFilterBar<TData>(props: TaskLogsFilterBarProps<TData>) {
       },
     })
     queryClient.invalidateQueries({ queryKey: ['logs'] })
-  }, [navigate, props.logCategory, queryClient])
+  }, [navigate, props.logCategory, queryClient, routeTo])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

@@ -21,7 +21,11 @@ import { createContext, useContext, useState, type ReactNode } from 'react'
 
 import type { ChannelAffinityInfo } from '../types'
 
+export type UsageLogsMode = 'user' | 'admin'
+
 interface UsageLogsContextValue {
+  mode: UsageLogsMode
+  routeTo: '/usage-logs/$section' | '/admin-logs/$section'
   selectedUserId: number | null
   setSelectedUserId: (userId: number | null) => void
   userInfoDialogOpen: boolean
@@ -38,7 +42,13 @@ const UsageLogsContext = createContext<UsageLogsContextValue | undefined>(
   undefined
 )
 
-export function UsageLogsProvider({ children }: { children: ReactNode }) {
+export function UsageLogsProvider({
+  children,
+  mode = 'user',
+}: {
+  children: ReactNode
+  mode?: UsageLogsMode
+}) {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const [userInfoDialogOpen, setUserInfoDialogOpen] = useState(false)
   const [affinityTarget, setAffinityTarget] =
@@ -49,6 +59,8 @@ export function UsageLogsProvider({ children }: { children: ReactNode }) {
   return (
     <UsageLogsContext.Provider
       value={{
+        mode,
+        routeTo: mode === 'admin' ? '/admin-logs/$section' : '/usage-logs/$section',
         selectedUserId,
         setSelectedUserId,
         userInfoDialogOpen,

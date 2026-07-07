@@ -52,7 +52,8 @@ import {
 } from './logs-filter-toolbar'
 import { useUsageLogsContext } from './usage-logs-provider'
 
-const route = getRouteApi('/_authenticated/usage-logs/$section')
+const userLogsRoute = getRouteApi('/_authenticated/usage-logs/$section')
+const adminLogsRoute = getRouteApi('/_authenticated/admin-logs/$section')
 
 type LogTypeValue = (typeof LOG_TYPE_FILTERS)[number]['value']
 const logTypeValueSet = new Set<string>(
@@ -116,9 +117,11 @@ export function CommonLogsFilterBar<TData>(
   const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { mode, routeTo, sensitiveVisible, setSensitiveVisible } =
+    useUsageLogsContext()
+  const route = mode === 'admin' ? adminLogsRoute : userLogsRoute
   const searchParams = route.useSearch()
   const isAdmin = useIsAdmin()
-  const { sensitiveVisible, setSensitiveVisible } = useUsageLogsContext()
   const fetchingLogs = useIsFetching({ queryKey: ['logs'] })
 
   const searchState = useMemo<CommonLogDraft>(() => {
@@ -189,7 +192,7 @@ export function CommonLogsFilterBar<TData>(
   const handleApply = useCallback(() => {
     const filterParams = buildSearchParams(filters, 'common')
     navigate({
-      to: '/usage-logs/$section',
+      to: routeTo,
       params: { section: 'common' },
       search: {
         ...filterParams,
@@ -199,7 +202,7 @@ export function CommonLogsFilterBar<TData>(
     })
     queryClient.invalidateQueries({ queryKey: ['logs'] })
     queryClient.invalidateQueries({ queryKey: ['usage-logs-stats'] })
-  }, [filters, logType, navigate, queryClient])
+  }, [filters, logType, navigate, queryClient, routeTo])
 
   const handleReset = useCallback(() => {
     const { start, end } = getDefaultTimeRange()
@@ -216,7 +219,7 @@ export function CommonLogsFilterBar<TData>(
     })
 
     navigate({
-      to: '/usage-logs/$section',
+      to: routeTo,
       params: { section: 'common' },
       search: {
         page: 1,
@@ -225,7 +228,7 @@ export function CommonLogsFilterBar<TData>(
     })
     queryClient.invalidateQueries({ queryKey: ['logs'] })
     queryClient.invalidateQueries({ queryKey: ['usage-logs-stats'] })
-  }, [navigate, queryClient])
+  }, [navigate, queryClient, routeTo])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

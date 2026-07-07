@@ -38,7 +38,8 @@ import {
   type UsageLogsSectionId,
 } from './section-registry'
 
-const route = getRouteApi('/_authenticated/usage-logs/$section')
+const userLogsRoute = getRouteApi('/_authenticated/usage-logs/$section')
+const adminLogsRoute = getRouteApi('/_authenticated/admin-logs/$section')
 const TASK_LOG_SECTIONS = ['drawing', 'task'] as const
 
 const SECTION_META: Record<UsageLogsSectionId, { titleKey: string }> = {
@@ -56,6 +57,8 @@ const SECTION_META: Record<UsageLogsSectionId, { titleKey: string }> = {
 function UsageLogsContent() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { mode, routeTo } = useUsageLogsContext()
+  const route = mode === 'admin' ? adminLogsRoute : userLogsRoute
   const params = route.useParams()
   const activeCategory: UsageLogsSectionId =
     params.section && isUsageLogsSectionId(params.section)
@@ -75,11 +78,11 @@ function UsageLogsContent() {
         title: 'Task Logs',
         items: TASK_LOG_SECTIONS.map((section) => ({
           title: SECTION_META[section].titleKey,
-          url: `/usage-logs/${section}`,
+          url: `${mode === 'admin' ? '/admin-logs' : '/usage-logs'}/${section}`,
         })),
       },
     ],
-    []
+    [mode]
   )
   const filteredTabGroups = useSidebarConfig(tabNavGroups)
   const visibleSections = useMemo(
@@ -98,11 +101,11 @@ function UsageLogsContent() {
   const handleSectionChange = useCallback(
     (section: string) => {
       void navigate({
-        to: '/usage-logs/$section',
+        to: routeTo,
         params: { section: section as UsageLogsSectionId },
       })
     },
-    [navigate]
+    [navigate, routeTo]
   )
 
   const pageMeta =
@@ -163,9 +166,9 @@ function UsageLogsContent() {
   )
 }
 
-export function UsageLogs() {
+export function UsageLogs({ mode = 'user' }: { mode?: 'user' | 'admin' }) {
   return (
-    <UsageLogsProvider>
+    <UsageLogsProvider mode={mode}>
       <UsageLogsContent />
     </UsageLogsProvider>
   )

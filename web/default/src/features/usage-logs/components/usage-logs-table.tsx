@@ -43,9 +43,11 @@ import { fetchLogsByCategory } from '../lib/utils'
 import type { LogCategory } from '../types'
 import { CommonLogsFilterBar } from './common-logs-filter-bar'
 import { TaskLogsFilterBar } from './task-logs-filter-bar'
+import { useUsageLogsContext } from './usage-logs-provider'
 import { UsageLogsMobileList } from './usage-logs-mobile-card'
 
-const route = getRouteApi('/_authenticated/usage-logs/$section')
+const userLogsRoute = getRouteApi('/_authenticated/usage-logs/$section')
+const adminLogsRoute = getRouteApi('/_authenticated/admin-logs/$section')
 
 const logTypeRowTint: Record<number, string> = {
   [LOG_TYPE_ENUM.ERROR]: 'bg-rose-50/40 dark:bg-rose-950/20',
@@ -76,6 +78,8 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   const { t } = useTranslation()
   const isAdmin = useIsAdmin()
   const isMobile = useMediaQuery('(max-width: 640px)')
+  const { mode } = useUsageLogsContext()
+  const route = mode === 'admin' ? adminLogsRoute : userLogsRoute
   const searchParams = route.useSearch()
 
   const {

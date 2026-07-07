@@ -30,7 +30,8 @@ import { DEFAULT_LOG_STATS } from '../constants'
 import { buildApiParams } from '../lib/utils'
 import { useUsageLogsContext } from './usage-logs-provider'
 
-const route = getRouteApi('/_authenticated/usage-logs/$section')
+const userLogsRoute = getRouteApi('/_authenticated/usage-logs/$section')
+const adminLogsRoute = getRouteApi('/_authenticated/admin-logs/$section')
 
 function StatBadge(props: {
   label: string
@@ -51,8 +52,9 @@ function StatBadge(props: {
 export function CommonLogsStats() {
   const { t } = useTranslation()
   const isAdmin = useIsAdmin()
+  const { mode, sensitiveVisible } = useUsageLogsContext()
+  const route = mode === 'admin' ? adminLogsRoute : userLogsRoute
   const searchParams = route.useSearch()
-  const { sensitiveVisible } = useUsageLogsContext()
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['usage-logs-stats', isAdmin, searchParams],
