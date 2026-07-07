@@ -1,10 +1,10 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
@@ -107,11 +107,17 @@ func HandleOAuth(c *gin.Context) {
 	// 7. Find or create user
 	user, err := findOrCreateOAuthUser(c, provider, oauthUser, session)
 	if err != nil {
+		if errors.Is(err, model.ErrEmailAlreadyTaken) {
+			common.ApiErrorI18n(c, i18n.MsgUserEmailAlreadyTaken)
+			return
+		}
 		switch err.(type) {
 		case *OAuthUserDeletedError:
 			common.ApiErrorI18n(c, i18n.MsgOAuthUserDeleted)
 		case *OAuthRegistrationDisabledError:
 			common.ApiErrorI18n(c, i18n.MsgUserRegisterDisabled)
+		case *OAuthEmailAlreadyTakenError:
+			common.ApiErrorI18n(c, i18n.MsgUserEmailAlreadyTaken)
 		default:
 			common.ApiError(c, err)
 		}
@@ -258,9 +264,12 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 		user.DisplayName = provider.GetName() + " User"
 	}
 	if oauthUser.Email != "" {
-		user.Email = strings.ToLower(strings.TrimSpace(oauthUser.Email))
-		if model.IsEmailAlreadyTaken(user.Email) {
-			return nil, fmt.Errorf("email is already taken")
+		user.Email = model.NormalizeEmail(oauthUser.Email)
+		if err := model.EnsureEmailAvailable(user.Email, 0); err != nil {
+			if errors.Is(err, model.ErrEmailAlreadyTaken) {
+				return nil, &OAuthEmailAlreadyTakenError{}
+			}
+			return nil, err
 		}
 	}
 	user.Role = common.RoleCommonUser
@@ -345,6 +354,12 @@ type OAuthRegistrationDisabledError struct{}
 
 func (e *OAuthRegistrationDisabledError) Error() string {
 	return "registration is disabled"
+}
+
+type OAuthEmailAlreadyTakenError struct{}
+
+func (e *OAuthEmailAlreadyTakenError) Error() string {
+	return "email is already in use"
 }
 
 // handleOAuthError handles OAuth errors and returns translated message

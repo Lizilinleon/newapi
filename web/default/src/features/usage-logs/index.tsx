@@ -16,14 +16,16 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { useCallback, useMemo } from 'react'
-import { useNavigate, useParams } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { useSidebarConfig } from '@/hooks/use-sidebar-config'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 import { SectionPageLayout } from '@/components/layout'
 import type { NavGroup } from '@/components/layout/types'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CacheStatsDialog } from '@/features/system-settings/general/channel-affinity/cache-stats-dialog'
+import { useSidebarConfig } from '@/hooks/use-sidebar-config'
+
 import { UserInfoDialog } from './components/dialogs/user-info-dialog'
 import {
   UsageLogsProvider,
@@ -36,6 +38,7 @@ import {
   type UsageLogsSectionId,
 } from './section-registry'
 
+const route = getRouteApi('/_authenticated/usage-logs/$section')
 const TASK_LOG_SECTIONS = ['drawing', 'task'] as const
 
 const SECTION_META: Record<UsageLogsSectionId, { titleKey: string }> = {
@@ -50,19 +53,10 @@ const SECTION_META: Record<UsageLogsSectionId, { titleKey: string }> = {
   },
 }
 
-interface UsageLogsContentProps {
-  mode: 'personal' | 'admin'
-}
-
-function UsageLogsContent({ mode }: UsageLogsContentProps) {
+function UsageLogsContent() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const params = useParams({ strict: false }) as { section?: string }
-  const isAdminView = mode === 'admin'
-  const basePath = isAdminView ? '/admin-logs' : '/usage-logs'
-  const routePath = isAdminView
-    ? '/admin-logs/$section'
-    : '/usage-logs/$section'
+  const params = route.useParams()
   const activeCategory: UsageLogsSectionId =
     params.section && isUsageLogsSectionId(params.section)
       ? params.section
@@ -81,11 +75,11 @@ function UsageLogsContent({ mode }: UsageLogsContentProps) {
         title: 'Task Logs',
         items: TASK_LOG_SECTIONS.map((section) => ({
           title: SECTION_META[section].titleKey,
-          url: `${basePath}/${section}`,
+          url: `/usage-logs/${section}`,
         })),
       },
     ],
-    [basePath]
+    []
   )
   const filteredTabGroups = useSidebarConfig(tabNavGroups)
   const visibleSections = useMemo(
@@ -104,16 +98,15 @@ function UsageLogsContent({ mode }: UsageLogsContentProps) {
   const handleSectionChange = useCallback(
     (section: string) => {
       void navigate({
-        to: routePath,
+        to: '/usage-logs/$section',
         params: { section: section as UsageLogsSectionId },
-      } as never)
+      })
     },
-    [navigate, routePath]
+    [navigate]
   )
 
   const pageMeta =
     activeCategory === 'common' ? SECTION_META.common : SECTION_META.task
-  const pageTitleKey = isAdminView ? 'Admin Logs' : pageMeta.titleKey
   const showTaskSwitcher =
     activeCategory !== 'common' && visibleSections.length > 1
 
@@ -121,7 +114,7 @@ function UsageLogsContent({ mode }: UsageLogsContentProps) {
     <>
       <SectionPageLayout fixedContent>
         <SectionPageLayout.Title>
-          {t(pageTitleKey)}
+          {t(pageMeta.titleKey)}
         </SectionPageLayout.Title>
         <SectionPageLayout.Content>
           <div className='flex h-full min-h-0 flex-col gap-4'>
@@ -137,10 +130,7 @@ function UsageLogsContent({ mode }: UsageLogsContentProps) {
               </Tabs>
             )}
             <div className='min-h-0 flex-1'>
-              <UsageLogsTable
-                logCategory={activeCategory}
-                isAdminView={isAdminView}
-              />
+              <UsageLogsTable logCategory={activeCategory} />
             </div>
           </div>
         </SectionPageLayout.Content>
@@ -173,14 +163,10 @@ function UsageLogsContent({ mode }: UsageLogsContentProps) {
   )
 }
 
-interface UsageLogsProps {
-  mode?: 'personal' | 'admin'
-}
-
-export function UsageLogs({ mode = 'personal' }: UsageLogsProps) {
+export function UsageLogs() {
   return (
     <UsageLogsProvider>
-      <UsageLogsContent mode={mode} />
+      <UsageLogsContent />
     </UsageLogsProvider>
   )
 }

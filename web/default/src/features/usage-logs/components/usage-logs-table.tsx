@@ -17,36 +17,44 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate, useSearch } from '@tanstack/react-router'
-import {
-  type ColumnDef,
-} from '@tanstack/react-table'
-import { useMediaQuery } from '@/hooks'
+import { getRouteApi } from '@tanstack/react-router'
+import { type ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
-import { useTableUrlState } from '@/hooks/use-table-url-state'
+
 import {
   DataTablePage,
   DataTableRow,
   useDataTable,
 } from '@/components/data-table'
+import { useMediaQuery } from '@/hooks'
+import { useIsAdmin } from '@/hooks/use-admin'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { cn } from '@/lib/utils'
+
 import {
   DEFAULT_LOGS_DATA,
   LOG_TYPE_ALL_VALUE,
   LOG_TYPE_ENUM,
 } from '../constants'
 import { useColumnsByCategory } from '../lib/columns'
+import { parseLogOther } from '../lib/format'
 import { fetchLogsByCategory } from '../lib/utils'
 import type { LogCategory } from '../types'
 import { CommonLogsFilterBar } from './common-logs-filter-bar'
 import { TaskLogsFilterBar } from './task-logs-filter-bar'
 import { UsageLogsMobileList } from './usage-logs-mobile-card'
 
+const route = getRouteApi('/_authenticated/usage-logs/$section')
+
 const logTypeRowTint: Record<number, string> = {
   [LOG_TYPE_ENUM.ERROR]: 'bg-rose-50/40 dark:bg-rose-950/20',
   [LOG_TYPE_ENUM.REFUND]: 'bg-blue-50/30 dark:bg-blue-950/15',
 }
+
+// Warning tint for logs where a quota conversion saturated (admin-only marker).
+// Takes precedence over the per-type tint since it flags a billing anomaly.
+const quotaSaturationRowTint = 'bg-amber-50/60 dark:bg-amber-950/25'
 
 function getColumnVisibilityStorageKey(
   logCategory: LogCategory,
@@ -62,17 +70,13 @@ function deserializeLogTypeFilter(value: unknown): unknown[] {
 
 interface UsageLogsTableProps {
   logCategory: LogCategory
-  isAdminView: boolean
 }
 
-export function UsageLogsTable({
-  logCategory,
-  isAdminView,
-}: UsageLogsTableProps) {
+export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   const { t } = useTranslation()
+  const isAdmin = useIsAdmin()
   const isMobile = useMediaQuery('(max-width: 640px)')
-  const searchParams = useSearch({ strict: false }) as Record<string, unknown>
-  const navigate = useNavigate()
+  const searchParams = route.useSearch()
 
   const {
     columnFilters,
@@ -81,8 +85,8 @@ export function UsageLogsTable({
     onPaginationChange,
     ensurePageInRange,
   } = useTableUrlState({
-    search: searchParams,
-    navigate,
+    search: route.useSearch(),
+    navigate: route.useNavigate(),
     pagination: { defaultPage: 1, defaultPageSize: isMobile ? 20 : 100 },
     globalFilter: { enabled: false },
     columnFilters: [
@@ -95,7 +99,7 @@ export function UsageLogsTable({
       { columnId: 'model_name', searchKey: 'model', type: 'string' as const },
       { columnId: 'token_name', searchKey: 'token', type: 'string' as const },
       { columnId: 'group', searchKey: 'group', type: 'string' as const },
-      ...(isAdminView
+      ...(isAdmin
         ? [
             {
               columnId: 'channel',
@@ -116,7 +120,7 @@ export function UsageLogsTable({
     queryKey: [
       'logs',
       logCategory,
-      isAdminView,
+      isAdmin,
       pagination.pageIndex + 1,
       pagination.pageSize,
       columnFilters,
@@ -126,7 +130,7 @@ export function UsageLogsTable({
     queryFn: async () => {
       const result = await fetchLogsByCategory({
         logCategory,
-        isAdmin: isAdminView,
+        isAdmin,
         page: pagination.pageIndex + 1,
         pageSize: pagination.pageSize,
         searchParams,
@@ -149,7 +153,7 @@ export function UsageLogsTable({
   })
 
   const logs = data?.items || []
-  const columns = useColumnsByCategory(logCategory, isAdminView)
+  const columns = useColumnsByCategory(logCategory, isAdmin)
   const isLoadingData = isLoading || (isFetching && !data)
 
   const { table } = useDataTable({
@@ -158,7 +162,7 @@ export function UsageLogsTable({
     columnFilters,
     columnVisibilityStorageKey: getColumnVisibilityStorageKey(
       logCategory,
-      isAdminView
+      isAdmin
     ),
     pagination,
     enableRowSelection: false,
@@ -196,21 +200,25 @@ export function UsageLogsTable({
       }
       toolbar={
         isCommon ? (
-          <CommonLogsFilterBar table={table} isAdminView={isAdminView} />
+          <CommonLogsFilterBar table={table} />
         ) : (
-          <TaskLogsFilterBar
-            table={table}
-            logCategory={logCategory}
-            isAdminView={isAdminView}
-          />
+          <TaskLogsFilterBar table={table} logCategory={logCategory} />
         )
       }
       renderRow={(row) => {
         const logType = (row.original as Record<string, unknown>).type as
           | number
           | undefined
-        const tintClass =
+        let tintClass =
           isCommon && logType != null ? (logTypeRowTint[logType] ?? '') : ''
+        if (isCommon && isAdmin) {
+          const other = parseLogOther(
+            ((row.original as Record<string, unknown>).other as string) ?? ''
+          )
+          if (other?.admin_info?.quota_saturation) {
+            tintClass = quotaSaturationRowTint
+          }
+        }
 
         return (
           <DataTableRow

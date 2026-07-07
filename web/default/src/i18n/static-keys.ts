@@ -23,9 +23,11 @@ export const STATIC_I18N_KEYS = [
   'Home',
   'Console',
   'Model Square',
+  'Model Plaza',
   'Rankings',
   'Docs',
   'About',
+  'Register',
 
   // Sidebar views (drill-in workspaces)
   'System Settings',

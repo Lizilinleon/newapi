@@ -16,12 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState, useCallback, useMemo } from 'react'
 import { useQueryClient, useIsFetching } from '@tanstack/react-query'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useNavigate, getRouteApi } from '@tanstack/react-router'
 import type { Table } from '@tanstack/react-table'
 import { Eye, EyeOff } from 'lucide-react'
+import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -36,6 +37,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useIsAdmin } from '@/hooks/use-admin'
+
 import { LOG_TYPE_ALL_VALUE, LOG_TYPE_FILTERS } from '../constants'
 import { buildSearchParams } from '../lib/filter'
 import { getDefaultTimeRange } from '../lib/utils'
@@ -48,6 +51,8 @@ import {
   LogsFilterToolbar,
 } from './logs-filter-toolbar'
 import { useUsageLogsContext } from './usage-logs-provider'
+
+const route = getRouteApi('/_authenticated/usage-logs/$section')
 
 type LogTypeValue = (typeof LOG_TYPE_FILTERS)[number]['value']
 const logTypeValueSet = new Set<string>(
@@ -103,7 +108,6 @@ function buildSearchSourceKey(values: {
 
 interface CommonLogsFilterBarProps<TData> {
   table: Table<TData>
-  isAdminView: boolean
 }
 
 export function CommonLogsFilterBar<TData>(
@@ -112,8 +116,8 @@ export function CommonLogsFilterBar<TData>(
   const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const searchParams = useSearch({ strict: false }) as Record<string, unknown>
-  const { isAdminView } = props
+  const searchParams = route.useSearch()
+  const isAdmin = useIsAdmin()
   const { sensitiveVisible, setSensitiveVisible } = useUsageLogsContext()
   const fetchingLogs = useIsFetching({ queryKey: ['logs'] })
 
@@ -133,33 +137,16 @@ export function CommonLogsFilterBar<TData>(
     }
     const filters: CommonLogFilters = {
       startTime: searchParams.startTime
-        ? new Date(searchParams.startTime as number)
+        ? new Date(searchParams.startTime)
         : start,
-      endTime: searchParams.endTime
-        ? new Date(searchParams.endTime as number)
-        : end,
-      channel:
-        isAdminView && typeof searchParams.channel === 'string'
-          ? searchParams.channel
-          : undefined,
-      model:
-        typeof searchParams.model === 'string' ? searchParams.model : undefined,
-      token:
-        typeof searchParams.token === 'string' ? searchParams.token : undefined,
-      group:
-        typeof searchParams.group === 'string' ? searchParams.group : undefined,
-      username:
-        isAdminView && typeof searchParams.username === 'string'
-          ? searchParams.username
-          : undefined,
-      requestId:
-        typeof searchParams.requestId === 'string'
-          ? searchParams.requestId
-          : undefined,
-      upstreamRequestId:
-        typeof searchParams.upstreamRequestId === 'string'
-          ? searchParams.upstreamRequestId
-          : undefined,
+      endTime: searchParams.endTime ? new Date(searchParams.endTime) : end,
+      channel: searchParams.channel || undefined,
+      model: searchParams.model || undefined,
+      token: searchParams.token || undefined,
+      group: searchParams.group || undefined,
+      username: searchParams.username || undefined,
+      requestId: searchParams.requestId || undefined,
+      upstreamRequestId: searchParams.upstreamRequestId || undefined,
     }
     return {
       sourceKey: buildSearchSourceKey(sourceValues),
@@ -177,7 +164,6 @@ export function CommonLogsFilterBar<TData>(
     searchParams.requestId,
     searchParams.upstreamRequestId,
     searchParams.type,
-    isAdminView,
   ])
   const [draft, setDraft] = useState<CommonLogDraft>(() => searchState)
   const activeDraft =
@@ -203,6 +189,8 @@ export function CommonLogsFilterBar<TData>(
   const handleApply = useCallback(() => {
     const filterParams = buildSearchParams(filters, 'common')
     navigate({
+      to: '/usage-logs/$section',
+      params: { section: 'common' },
       search: {
         ...filterParams,
         type: [logType],
@@ -228,6 +216,8 @@ export function CommonLogsFilterBar<TData>(
     })
 
     navigate({
+      to: '/usage-logs/$section',
+      params: { section: 'common' },
       search: {
         page: 1,
         ...resetSearch,
@@ -246,8 +236,8 @@ export function CommonLogsFilterBar<TData>(
 
   const hasExpandedFilters =
     !!filters.token ||
-    (isAdminView && !!filters.username) ||
-    (isAdminView && !!filters.channel) ||
+    !!filters.username ||
+    !!filters.channel ||
     !!filters.requestId ||
     !!filters.upstreamRequestId
 
@@ -257,8 +247,8 @@ export function CommonLogsFilterBar<TData>(
 
   const expandedFilterCount = [
     filters.token,
-    isAdminView ? filters.username : undefined,
-    isAdminView ? filters.channel : undefined,
+    isAdmin ? filters.username : undefined,
+    isAdmin ? filters.channel : undefined,
     filters.requestId,
     filters.upstreamRequestId,
   ].filter(Boolean).length
@@ -276,7 +266,7 @@ export function CommonLogsFilterBar<TData>(
 
   const statsBar = (
     <div className='flex flex-wrap items-center gap-2'>
-      <CommonLogsStats isAdminView={isAdminView} />
+      <CommonLogsStats />
     </div>
   )
   const sensitiveToggle = (
@@ -380,7 +370,7 @@ export function CommonLogsFilterBar<TData>(
           onKeyDown={handleKeyDown}
         />
       </LogsFilterField>
-      {isAdminView && (
+      {isAdmin && (
         <LogsFilterField>
           <LogsFilterInput
             placeholder={t('Username')}
@@ -391,7 +381,7 @@ export function CommonLogsFilterBar<TData>(
           />
         </LogsFilterField>
       )}
-      {isAdminView && (
+      {isAdmin && (
         <LogsFilterField>
           <LogsFilterInput
             placeholder={t('Channel ID')}

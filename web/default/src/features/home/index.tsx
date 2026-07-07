@@ -16,22 +16,83 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
 import { Footer } from '@/components/layout/components/footer'
 import { RichContent } from '@/components/rich-content'
+import { useTheme } from '@/context/theme-provider'
 import { isLikelyHtml } from '@/lib/content-format'
 import { useAuthStore } from '@/stores/auth-store'
+
+import { LegacyHome } from '@/features/legacy-home'
 
 import { CTA, Features, Hero, HowItWorks, Stats } from './components'
 import { useHomePageContent } from './hooks'
 
+const HERO_OVERRIDE_KEYS = new Set([
+  'titleTop',
+  'titleBottom',
+  'subtitle',
+  'serverAddress',
+  'endpoints',
+  'primaryButtonText',
+  'primaryButtonUrl',
+  'secondaryButtonText',
+  'secondaryButtonUrl',
+  'providersTitle',
+])
+
+function isHomeHeroOverrideJson(content: string): boolean {
+  const trimmed = content.trim()
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return false
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    return (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      !Array.isArray(parsed) &&
+      Object.keys(parsed).some((key) => HERO_OVERRIDE_KEYS.has(key))
+    )
+  } catch {
+    return false
+  }
+}
+
 export function Home() {
-  const { t } = useTranslation()
+  const { i18n, t } = useTranslation()
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const { resolvedTheme } = useTheme()
   const { auth } = useAuthStore()
   const isAuthenticated = !!auth.user
   const { content, isLoaded, isUrl } = useHomePageContent()
+  const isHeroOverrideJson = useMemo(
+    () => (content ? isHomeHeroOverrideJson(content) : false),
+    [content]
+  )
+
+  const syncIframePreferences = useCallback(() => {
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        { themeMode: resolvedTheme },
+        '*'
+      )
+      iframeRef.current?.contentWindow?.postMessage(
+        { lang: i18n.language },
+        '*'
+      )
+    } catch {
+      // Cross-origin frames may reject access while navigating.
+    }
+  }, [i18n.language, resolvedTheme])
+
+  useEffect(() => {
+    if (isUrl) {
+      syncIframePreferences()
+    }
+  }, [isUrl, syncIframePreferences])
 
   if (!isLoaded) {
     return (
@@ -44,14 +105,35 @@ export function Home() {
   }
 
   if (content) {
+    if (isHeroOverrideJson) {
+      return <LegacyHome />
+    }
+
     if (isUrl) {
       return (
         <PublicLayout showMainContainer={false}>
           <iframe
+            ref={iframeRef}
             src={content}
             className='h-screen w-full border-none'
             title={t('Custom Home Page')}
             sandbox='allow-forms allow-popups allow-popups-to-escape-sandbox allow-scripts'
+            onLoad={syncIframePreferences}
+          />
+        </PublicLayout>
+      )
+    }
+
+    const contentIsHtml = isLikelyHtml(content)
+
+    if (contentIsHtml) {
+      return (
+        <PublicLayout showMainContainer={false}>
+          <RichContent
+            mode='html'
+            htmlVariant='isolated'
+            content={content}
+            className='custom-home-content'
           />
         </PublicLayout>
       )
@@ -61,7 +143,7 @@ export function Home() {
       <PublicLayout>
         <div className='mx-auto max-w-6xl px-4 py-8'>
           <RichContent
-            mode={isLikelyHtml(content) ? 'html' : 'markdown'}
+            mode='markdown'
             content={content}
             className='custom-home-content'
           />

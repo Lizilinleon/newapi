@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/mail"
 	"net/url"
 	"strconv"
 	"strings"
@@ -22,6 +21,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/QuantumNous/new-api/constant"
+
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -102,18 +102,23 @@ func filterManageableAdminUsers(users []*model.User, viewerRole int) []adminUser
 	return items
 }
 
+var (
+	errUserPasswordUnset    = errors.New("user password is not set")
+	errOriginalPasswordFail = errors.New("original password is incorrect")
+)
+
 func Login(c *gin.Context) {
 	if !common.PasswordLoginEnabled {
 		common.ApiErrorI18n(c, i18n.MsgUserPasswordLoginDisabled)
 		return
 	}
 	var loginRequest LoginRequest
-	err := common.DecodeJson(c.Request.Body, &loginRequest)
+	err := json.NewDecoder(c.Request.Body).Decode(&loginRequest)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
-	username := strings.TrimSpace(loginRequest.Username)
+	username := loginRequest.Username
 	password := loginRequest.Password
 	if username == "" || password == "" {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
@@ -202,7 +207,13 @@ func recordLoginAudit(user *model.User, c *gin.Context) {
 // setup session & cookies and then return user info
 func setupLogin(user *model.User, c *gin.Context) {
 	model.UpdateUserLastLoginAt(user.Id)
-	err := saveSessionUser(c, user)
+	session := sessions.Default(c)
+	session.Set("id", user.Id)
+	session.Set("username", user.Username)
+	session.Set("role", user.Role)
+	session.Set("status", user.Status)
+	session.Set("group", user.Group)
+	err := session.Save()
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserSessionSaveFailed)
 		return
@@ -222,23 +233,17 @@ func setupLogin(user *model.User, c *gin.Context) {
 	})
 }
 
-func clearBrowserSession(c *gin.Context) error {
+func Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
-	session.Options(sessions.Options{
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-	})
-	return session.Save()
-}
-
-func Logout(c *gin.Context) {
-	if err := clearBrowserSession(c); err != nil {
-		common.ApiErrorI18n(c, i18n.MsgUserSessionSaveFailed)
+	err := session.Save()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"success": false,
+		})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"message": "",
 		"success": true,
@@ -255,18 +260,14 @@ func Register(c *gin.Context) {
 		return
 	}
 	var user model.User
-	err := common.DecodeJson(c.Request.Body, &user)
+	err := json.NewDecoder(c.Request.Body).Decode(&user)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
 	user.Username = strings.TrimSpace(user.Username)
-	user.Email = strings.ToLower(strings.TrimSpace(user.Email))
-	if user.Username == "" || user.Email == "" || user.Password == "" {
-		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
-		return
-	}
-	if _, err := mail.ParseAddress(user.Email); err != nil {
+	user.Email = model.NormalizeEmail(user.Email)
+	if user.Username == "" {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
@@ -274,7 +275,29 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
 	}
-	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
+	if common.EmailVerificationEnabled {
+		if user.Email == "" || user.VerificationCode == "" {
+			common.ApiErrorI18n(c, i18n.MsgUserEmailVerificationRequired)
+			return
+		}
+		if !common.VerifyCodeWithKey(user.Email, user.VerificationCode, common.EmailVerificationPurpose) {
+			common.ApiErrorI18n(c, i18n.MsgUserVerificationCodeError)
+			return
+		}
+		if err := model.EnsureEmailAvailable(user.Email, 0); err != nil {
+			if errors.Is(err, model.ErrEmailAlreadyTaken) {
+				common.ApiErrorI18n(c, i18n.MsgUserEmailAlreadyTaken)
+				return
+			}
+			common.ApiErrorI18n(c, i18n.MsgDatabaseError)
+			return
+		}
+	}
+	emailForExistCheck := ""
+	if common.EmailVerificationEnabled {
+		emailForExistCheck = user.Email
+	}
+	exist, err := model.CheckUserExistOrDeleted(user.Username, emailForExistCheck)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
 		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
@@ -284,34 +307,28 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserExists)
 		return
 	}
-	if common.EmailVerificationEnabled {
-		if user.VerificationCode == "" {
-			common.ApiError(c, errors.New("email verification code is required"))
-			return
-		}
-		if !common.VerifyCodeWithKey(user.Email, user.VerificationCode, common.EmailVerificationPurpose) {
-			common.ApiError(c, errors.New("invalid email verification code"))
-			return
-		}
-	}
 	affCode := user.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{
 		Username:    user.Username,
 		Password:    user.Password,
 		DisplayName: user.Username,
-		Email:       user.Email,
 		InviterId:   inviterId,
-		Role:        common.RoleCommonUser,
+		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
+	}
+	if common.EmailVerificationEnabled {
+		cleanUser.Email = user.Email
 	}
 	if err := cleanUser.Insert(inviterId); err != nil {
+		if errors.Is(err, model.ErrEmailAlreadyTaken) {
+			common.ApiErrorI18n(c, i18n.MsgUserEmailAlreadyTaken)
+			return
+		}
 		common.ApiError(c, err)
 		return
 	}
-	if common.EmailVerificationEnabled {
-		common.DeleteKey(user.Email, common.EmailVerificationPurpose)
-	}
 
+	// 获取插入后的用户ID
 	var insertedUser model.User
 	if err := model.DB.Where("username = ?", cleanUser.Username).First(&insertedUser).Error; err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserRegisterFailed)
@@ -346,11 +363,6 @@ func Register(c *gin.Context) {
 		}
 	}
 
-	if err := clearBrowserSession(c); err != nil {
-		common.ApiErrorI18n(c, i18n.MsgUserSessionSaveFailed)
-		return
-	}
-
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -365,10 +377,9 @@ func GetAllUsers(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	items := filterManageableAdminUsers(users, c.GetInt("role"))
 
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(items)
+	pageInfo.SetItems(filterManageableAdminUsers(users, c.GetInt("role")))
 
 	common.ApiSuccess(c, pageInfo)
 	return
@@ -395,10 +406,9 @@ func SearchUsers(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	items := filterManageableAdminUsers(users, c.GetInt("role"))
 
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(items)
+	pageInfo.SetItems(filterManageableAdminUsers(users, c.GetInt("role")))
 	common.ApiSuccess(c, pageInfo)
 	return
 }
@@ -427,7 +437,7 @@ func GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    buildAdminUserResponse(user),
+		"data":    user,
 	})
 	return
 }
@@ -619,7 +629,6 @@ func generateDefaultSidebarConfig(userRole int) string {
 		"enabled":    true,
 		"detail":     true,
 		"token":      true,
-		"enterprise": true,
 		"log":        true,
 		"midjourney": true,
 		"task":       true,
@@ -716,6 +725,11 @@ func UpdateUser(c *gin.Context) {
 	var updatedUser model.User
 	err := json.NewDecoder(c.Request.Body).Decode(&updatedUser)
 	if err != nil || updatedUser.Id == 0 {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	updatedUser.Username = strings.TrimSpace(updatedUser.Username)
+	if updatedUser.Username == "" {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
@@ -820,8 +834,7 @@ func AdminClearUserBinding(c *gin.Context) {
 
 func UpdateSelf(c *gin.Context) {
 	var requestData map[string]interface{}
-	err := json.NewDecoder(c.Request.Body).Decode(&requestData)
-	if err != nil {
+	if err := common.DecodeJson(c.Request.Body, &requestData); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
@@ -843,9 +856,7 @@ func UpdateSelf(c *gin.Context) {
 			currentSetting.SidebarModules = sidebarModulesStr
 		}
 
-		// 保存更新后的设置
-		user.SetSetting(currentSetting)
-		if err := user.Update(false); err != nil {
+		if err := model.UpdateUserSetting(user.Id, currentSetting); err != nil {
 			common.ApiErrorI18n(c, i18n.MsgUpdateFailed)
 			return
 		}
@@ -871,9 +882,7 @@ func UpdateSelf(c *gin.Context) {
 			currentSetting.Language = langStr
 		}
 
-		// 保存更新后的设置
-		user.SetSetting(currentSetting)
-		if err := user.Update(false); err != nil {
+		if err := model.UpdateUserSetting(user.Id, currentSetting); err != nil {
 			common.ApiErrorI18n(c, i18n.MsgUpdateFailed)
 			return
 		}
@@ -884,13 +893,12 @@ func UpdateSelf(c *gin.Context) {
 
 	// 原有的用户信息更新逻辑
 	var user model.User
-	requestDataBytes, err := json.Marshal(requestData)
+	requestDataBytes, err := common.Marshal(requestData)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
-	err = json.Unmarshal(requestDataBytes, &user)
-	if err != nil {
+	if err = common.Unmarshal(requestDataBytes, &user); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
@@ -915,6 +923,14 @@ func UpdateSelf(c *gin.Context) {
 	}
 	updatePassword, err := checkUpdatePassword(user.OriginalPassword, user.Password, cleanUser.Id)
 	if err != nil {
+		if errors.Is(err, errUserPasswordUnset) {
+			common.ApiErrorI18n(c, i18n.MsgUserPasswordUnset)
+			return
+		}
+		if errors.Is(err, errOriginalPasswordFail) {
+			common.ApiErrorI18n(c, i18n.MsgUserOriginalPasswordError)
+			return
+		}
 		common.ApiError(c, err)
 		return
 	}
@@ -931,6 +947,9 @@ func UpdateSelf(c *gin.Context) {
 }
 
 func checkUpdatePassword(originalPassword string, newPassword string, userId int) (updatePassword bool, err error) {
+	if newPassword == "" {
+		return
+	}
 	var currentUser *model.User
 	currentUser, err = model.GetUserById(userId, true)
 	if err != nil {
@@ -938,12 +957,12 @@ func checkUpdatePassword(originalPassword string, newPassword string, userId int
 	}
 
 	// 密码不为空,需要验证原密码
-	// 支持第一次账号绑定时原密码为空的情况
-	if !common.ValidatePasswordAndHash(originalPassword, currentUser.Password) && currentUser.Password != "" {
-		err = fmt.Errorf("原密码错误")
+	if currentUser.Password == "" {
+		err = errUserPasswordUnset
 		return
 	}
-	if newPassword == "" {
+	if !common.ValidatePasswordAndHash(originalPassword, currentUser.Password) {
+		err = errOriginalPasswordFail
 		return
 	}
 	updatePassword = true
@@ -1265,7 +1284,7 @@ func EmailBind(c *gin.Context) {
 		return
 	}
 	email := req.Email
-	email = strings.ToLower(strings.TrimSpace(email))
+	email = model.NormalizeEmail(email)
 	code := req.Code
 	if !common.VerifyCodeWithKey(email, code, common.EmailVerificationPurpose) {
 		common.ApiErrorI18n(c, i18n.MsgUserVerificationCodeError)
@@ -1281,13 +1300,11 @@ func EmailBind(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	if model.IsEmailAlreadyTaken(email) && !strings.EqualFold(user.Email, email) {
-		common.ApiError(c, errors.New("email is already taken"))
-		return
-	}
-	user.Email = email
-	err = user.Update(false)
-	if err != nil {
+	if err := model.BindEmailToUser(&user, email); err != nil {
+		if errors.Is(err, model.ErrEmailAlreadyTaken) {
+			common.ApiErrorI18n(c, i18n.MsgUserEmailAlreadyTaken)
+			return
+		}
 		common.ApiError(c, err)
 		return
 	}
@@ -1364,11 +1381,9 @@ func TopUp(c *gin.Context) {
 	}
 	quota, err := model.Redeem(req.Key, id)
 	if err != nil {
-		if errors.Is(err, model.ErrRedeemFailed) {
-			common.ApiErrorI18n(c, i18n.MsgRedeemFailed)
-			return
-		}
-		common.ApiError(c, err)
+		// 不向用户暴露兑换失败的细分原因，避免攻击者根据错误类型判断兑换码状态。
+		common.ApiErrorI18n(c, i18n.MsgRedeemFailed)
+		logger.LogError(c, fmt.Sprintf("failed to redeem key %s for user %d: %s", req.Key, id, err.Error()))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -1526,8 +1541,7 @@ func UpdateUserSetting(c *gin.Context) {
 	}
 
 	// 更新用户设置
-	user.SetSetting(settings)
-	if err := user.Update(false); err != nil {
+	if err := model.UpdateUserSetting(user.Id, settings); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUpdateFailed)
 		return
 	}

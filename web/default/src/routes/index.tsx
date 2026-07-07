@@ -17,8 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute } from '@tanstack/react-router'
-import { LegacyHome } from '@/features/legacy-home'
+
+import { Home } from '@/features/home'
 
 export const Route = createFileRoute('/')({
-  component: LegacyHome,
+  component: Home,
 })
