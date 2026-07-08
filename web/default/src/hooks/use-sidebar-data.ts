@@ -108,7 +108,7 @@ export function useSidebarData(): SidebarData {
     navGroups: [
       {
         id: 'chat',
-        title: '测试',
+        title: t('Playground'),
         items: [
           {
             title: t('Playground'),

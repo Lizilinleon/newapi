@@ -96,6 +96,31 @@ function replaceBrand(content) {
     .replace(/\[\s*\]\([^)]*#([^)]*)\)/g, '')
 }
 
+function alignWithCurrentApi(content) {
+  return String(content)
+    .replace(/\/v1\/videos\/generations\/\{task_id\}/g, '/v1/video/generations/{task_id}')
+    .replace(/\/videos\/generations\/\{task_id\}/g, '/video/generations/{task_id}')
+    .replace(/\/v1\/videos\/generations/g, '/v1/video/generations')
+    .replace(/\/videos\/generations/g, '/video/generations')
+    .replace(/sora_video2-landscape/g, 'sora-2-pro')
+    .replace(/sora_video2/g, 'sora-2')
+    .replace(/704 × 1280/g, '720 × 1280')
+    .replace(/1280 × 704/g, '1280 × 720')
+    .replace(/\/google/g, '')
+    .replace(/\/prices/g, '/pricing')
+    .replace(/\/account\/profile/g, '/profile')
+}
+
+function applyDocSpecificFixes(content, relative) {
+  if (relative === 'faq/token-management.md') {
+    return String(content).replaceAll(`${apiBase}/profile`, `${apiBase}/keys`)
+  }
+  if (relative === 'faq/call-logs.md') {
+    return String(content).replaceAll(`${apiBase}/profile`, `${apiBase}/usage-logs`)
+  }
+  return content
+}
+
 function normalizeLinks(content) {
   return content.replace(/\]\(\/([^)#]+?)(?:\.html)?\)/g, (_, target) => {
     const clean = target.replace(/^docs\//, '').replace(/\/$/, '')
@@ -116,7 +141,9 @@ function transformMarkdown(raw, relative) {
   const title = replaceBrand(meta.title || titleFromPath(relative)).trim()
   const description = replaceBrand(meta.description || '').trim()
   const sourceUrl = replaceBrand(meta.source_url || '').trim()
-  const normalized = normalizeLinks(replaceBrand(body)).trimStart()
+  const normalized = normalizeLinks(
+    applyDocSpecificFixes(alignWithCurrentApi(replaceBrand(body)), relative)
+  ).trimStart()
   const sourceNote = sourceUrl
     ? `---\n\n> 本页内容来自文档知识库整理，已按 ${brandName} 服务命名统一更新。\n`
     : ''

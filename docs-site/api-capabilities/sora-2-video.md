@@ -13,8 +13,8 @@ ArmNet 字元服务 提供无邀请码访问，且生成的视频**无水印**�
 ## 核心特性[​](/api-capabilities/sora-2-video#核心特性 "核心特性的直接链接")
 
 - **模型支持**：
-  - `sora_video2`：竖屏 (704 × 1280)
-  - `sora_video2-landscape`：横屏 (1280 × 704)
+  - `sora-2`：竖屏 (720 × 1280)
+  - `sora-2-pro`：横屏 (1280 × 720)
   - 15秒版本支持
 - **功能**：音视频同步，流式输出进度更新。
 - **生成时间**：通常 2-3 分钟 (10秒视频)，总处理时间 2.5-4 分钟。建议设置超时时间至少 5 分钟。
@@ -34,7 +34,7 @@ headers = {
     "Content-Type": "application/json"  
 }  
 data = {  
-    "model": "sora_video2",  
+    "model": "sora-2",  
     "prompt": "A cinematic drone shot of a futuristic city at sunset",  
     "with_audio": True  
 }  

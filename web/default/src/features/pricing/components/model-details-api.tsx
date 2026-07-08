@@ -766,8 +766,6 @@ export function ModelDetailsApi(props: {
     <div className='space-y-6'>
       <CodeSamplesSection model={props.model} endpointMap={props.endpointMap} />
       <AuthSection />
-      <SupportedParametersSection model={props.model} />
-      <RateLimitsSection model={props.model} />
     </div>
   )
 }

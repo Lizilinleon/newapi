@@ -28,14 +28,14 @@ Sora 2 异步 API 提供异步调用模式，适合批量处理、后台任务�
 ### 提交任务[​](/api-capabilities/sora-2-video-async#提交任务 "提交任务的直接链接")
 
 ```
-POST http://122.51.35.238:5170/v1/videos/generations
+POST http://122.51.35.238:5170/v1/video/generations
 ```
 
 **请求参数**
 
 | 参数 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| model | string | 是 | `sora_video2` 或 `sora_video2-landscape` |
+| model | string | 是 | `sora-2` 或 `sora-2-pro` |
 | prompt | string | 是 | 视频描述 |
 | duration | integer | 否 | 视频时长（秒），5/10/15/20 |
 | async | boolean | 是 | 设为 `true` 启用异步模式 |
@@ -53,7 +53,7 @@ POST http://122.51.35.238:5170/v1/videos/generations
 ### 查询状态[​](/api-capabilities/sora-2-video-async#查询状态 "查询状态的直接链接")
 
 ```
-GET http://122.51.35.238:5170/v1/videos/generations/{task_id}
+GET http://122.51.35.238:5170/v1/video/generations/{task_id}
 ```
 
 **状态值**
@@ -80,9 +80,9 @@ client = openai.OpenAI(
   
 # 1. 提交异步任务  
 response = client.post(  
-    "/videos/generations",  
+    "/video/generations",  
     body={  
-        "model": "sora_video2",  
+        "model": "sora-2",  
         "prompt": "一只猫在草地上奔跑，阳光明媚，慢动作",  
         "duration": 10,  
         "async": True  
@@ -94,7 +94,7 @@ print(f"任务已提交: {task_id}")
   
 # 2. 轮询状态  
 while True:  
-    status = client.get(f"/videos/generations/{task_id}")  
+    status = client.get(f"/video/generations/{task_id}")  
   
     if status["status"] == "completed":  
         print(f"视频已生成: {status['video_url']}")  
@@ -118,7 +118,7 @@ while True:
 
 ```
 try:  
-    status = client.get(f"/videos/generations/{task_id}")  
+    status = client.get(f"/video/generations/{task_id}")  
     if status["status"] == "failed":  
         error_msg = status.get("error", "未知错误")  
         # 处理错误  

@@ -20,12 +20,10 @@ import { useNavigate } from '@tanstack/react-router'
 import {
   Bell,
   Languages,
-  LayoutDashboard,
   Link2,
   Settings as SettingsIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -42,7 +40,6 @@ import {
   CardStaggerItem,
 } from '@/components/page-transition'
 import { LanguagePreferencesCard } from '@/features/profile/components/language-preferences-card'
-import { SidebarModulesCard } from '@/features/profile/components/sidebar-modules-card'
 import { AccountBindingsTab } from '@/features/profile/components/tabs/account-bindings-tab'
 import { NotificationTab } from '@/features/profile/components/tabs/notification-tab'
 import { useProfile } from '@/features/profile/hooks'
@@ -51,7 +48,6 @@ type SettingsSection =
   | 'account-bindings'
   | 'preferences'
   | 'language'
-  | 'sidebar'
 
 type SettingsSectionItem = {
   value: SettingsSection
@@ -153,8 +149,6 @@ export function Settings(props: { section?: string }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { profile, loading, refreshProfile } = useProfile()
-  const permissions = useAuthStore((s) => s.auth.user?.permissions)
-  const canConfigureSidebar = permissions?.sidebar_settings !== false
 
   const sectionItems: SettingsSectionItem[] = [
     {
@@ -176,15 +170,6 @@ export function Settings(props: { section?: string }) {
       icon: Languages,
     },
   ]
-
-  if (canConfigureSidebar) {
-    sectionItems.push({
-      value: 'sidebar',
-      title: t('Sidebar Personal Settings'),
-      description: t('Choose what appears in the left sidebar.'),
-      icon: LayoutDashboard,
-    })
-  }
 
   const sectionValues = sectionItems.map((item) => item.value)
   const currentSection = sectionValues.includes(
@@ -222,10 +207,6 @@ export function Settings(props: { section?: string }) {
           onProfileUpdate={refreshProfile}
         />
       )
-    }
-
-    if (currentSection === 'sidebar' && canConfigureSidebar) {
-      return <SidebarModulesCard />
     }
 
     return (

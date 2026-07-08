@@ -10,7 +10,7 @@ lastUpdated: true
 
 ## 查询路径[​](/faq/call-logs#查询路径 "查询路径的直接链接")
 
-1. 登录 [ArmNet 字元服务 控制台](http://122.51.35.238:5170/account/profile)。
+1. 登录 [ArmNet 字元服务 控制台](http://122.51.35.238:5170/usage-logs)。
 2. 点击左侧菜单的 **"日志"** (Logs)。
 
 ## 日志包含哪些信息？[​](/faq/call-logs#日志包含哪些信息 "日志包含哪些信息？的直接链接")

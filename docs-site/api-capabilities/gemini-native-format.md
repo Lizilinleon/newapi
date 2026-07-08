@@ -23,7 +23,7 @@ ArmNet 字元服务 支持使用 Gemini 的原生 API 格式进行调用，完�
 ```
 import google.generativeai as genai  
   
-genai.configure(api_key="YOUR_API_KEY", transport="rest", client_options={"api_endpoint": "http://122.51.35.238:5170/google"})  
+genai.configure(api_key="YOUR_API_KEY", transport="rest", client_options={"api_endpoint": "http://122.51.35.238:5170"})  
   
 model = genai.GenerativeModel('gemini-1.5-flash')  
 response = model.generate_content("Hello, how are you?")  
